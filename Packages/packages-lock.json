@@ -70,6 +70,14 @@
         "com.unity.modules.imgui": "1.0.0"
       }
     },
+    "jp.ikep.mediapipe.blazepose": {
+      "version": "file:BlazePoseBarracuda",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.barracuda": "2.0.0-pre.3"
+      }
+    },
     "jp.ikep.mediapipe.posedetection": {
       "version": "https://github.com/creativeIKEP/PoseDetectionBarracuda.git?path=Packages/PoseDetectionBarracuda#v1.0.0",
       "depth": 0,
