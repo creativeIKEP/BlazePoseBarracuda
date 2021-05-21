@@ -1,0 +1,131 @@
+#pragma kernel PoseRegionUpdate
+#pragma kernel CropImage
+#pragma kernel PostProcess
+
+#define PI 3.14159265359
+
+#include "PoseRegion.cginc"
+#include "LowPassFilter.cginc"
+#include "Misc.cginc"
+#include "Packages/jp.ikep.mediapipe.posedetection/ComputeShader/Common.cginc"
+
+// Kernel 0
+float _deltaTime;
+uint _upperBodyOnly;
+StructuredBuffer<PoseDetection> _poseDetections;
+ByteAddressBuffer _poseDetectionCount;
+
+RWStructuredBuffer<PoseRegion> _poseRegions;
+
+[numthreads(1, 1, 1)]
+void PoseRegionUpdate(uint id : SV_DispatchThreadID)
+{
+    uint count = _poseDetectionCount.Load(0);
+    if (count <= 0) return;
+
+    const PoseDetection pd = _poseDetections[0];
+
+    float2 hip = pd.keyPoints[0];
+    float2 shoulder = pd.keyPoints[2];
+
+    float2 center = _upperBodyOnly ? shoulder : hip;
+    float2 roi = _upperBodyOnly ? pd.keyPoints[3] : pd.keyPoints[1];
+
+    float sizeX = abs(roi.x - center.x);
+    float sizeY = abs(roi.y - center.y);
+    float size = max(sizeX, sizeY) * 3.0;
+
+    float target = PI * 0.5;
+    const float2 up = shoulder - hip;
+    float angle = atan2(-up.y, up.x) - target;
+
+    center.y = 1 - center.y;
+    PoseRegion pr = _poseRegions[0];
+
+    // Low pass filter parameters and input vector
+    const float3 lpf_params = float3(2, 1.5f, _deltaTime);
+    const float4 box = float4(center, size, angle);
+    pr.dBox = lpf_Step_dx(box, pr.box, pr.dBox, lpf_params);
+    pr.box = lpf_Step_x(box, pr.box, pr.dBox, lpf_params);
+
+    // Region crop matrix update
+    float4x4 m1 = makeTranslationMatrix(pr.box.xy - pr.box.z / 2);
+    float4x4 m2 = makeScalingMatrix(pr.box.z);
+    float4x4 m3 = makeTranslationMatrix(0.5);
+    float4x4 m4 = makeRotationMatrix(pr.box.w);
+    float4x4 m5 = makeTranslationMatrix(-0.5);
+    pr.cropMatrix = mul(mul(mul(mul(m1, m2), m3), m4), m5);
+
+    // Compute buffer update
+    _poseRegions[0] = pr;
+}
+
+
+// Kernel 1
+#define CROP_IMAGE_SIZE 256
+
+float2 _spad_scale;
+sampler2D _inputTexture;
+StructuredBuffer<PoseRegion> _cropRegion;
+
+RWTexture2D<float3> _cropedTexture;
+
+[numthreads(8, 8, 1)]
+void CropImage(uint2 id : SV_DispatchThreadID)
+{
+    float4x4 xform = _cropRegion[0].cropMatrix;
+
+    // UV coordinates
+    float2 uv = (id + 0.5) / CROP_IMAGE_SIZE;
+    uv = mul(xform, float4(uv, 0, 1)).xy;
+
+    // De-letterboxing
+    uv = (uv - 0.5) * _spad_scale + 0.5;
+
+    // UV gradients
+    float2 duv_dx = mul(xform, float4(1.0 / CROP_IMAGE_SIZE, 0, 0, 0)).xy;
+    float2 duv_dy = mul(xform, float4(0, -1.0 / CROP_IMAGE_SIZE, 0, 0)).xy;
+
+    // Texture sample
+    float3 rgb = tex2Dgrad(_inputTexture, uv, duv_dx, duv_dy).rgb;
+
+    // // Tensor element output
+    _cropedTexture[id] = rgb;
+}
+
+
+// Kernel 2
+
+#ifdef UPPER_BODY
+    #define POST_KEYPOINT_COUNT 25
+#else
+    #define POST_KEYPOINT_COUNT 33
+#endif
+
+float _post_dt;
+float _post_scale;
+
+StructuredBuffer<float4> _post_input;
+StructuredBuffer<PoseRegion> _post_region;
+
+RWStructuredBuffer<float4> _post_output;
+
+[numthreads(POST_KEYPOINT_COUNT, 1, 1)]
+void PostProcess(uint id : SV_DispatchThreadID)
+{
+    PoseRegion region = _post_region[0];
+
+    float3 x = _post_input[id].xyz;
+    float3 p_x = _post_output[id].xyz;
+    float3 p_dx = _post_output[id + POST_KEYPOINT_COUNT].xyz;
+
+    x = mul(region.cropMatrix, float4(x, 1)).xyz;
+    x.xy *= _post_scale;
+
+    float3 lpf_params = float3(30, 1.5, _post_dt);
+    float3 dx = lpf_Step_dx(x, p_x, p_dx, lpf_params);
+    x = lpf_Step_x(x, p_x, dx, lpf_params);
+
+    _post_output[id] = float4(x, 1);
+    _post_output[id + POST_KEYPOINT_COUNT] = float4(dx, 1);
+}
