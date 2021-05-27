@@ -1,3 +1,4 @@
+#pragma kernel LetterBoxImage
 #pragma kernel PoseRegionUpdate
 #pragma kernel CropImage
 #pragma kernel PostProcess
@@ -9,7 +10,39 @@
 #include "Misc.cginc"
 #include "Packages/jp.ikep.mediapipe.posedetection/ComputeShader/Common.cginc"
 
+
 // Kernel 0
+uint _letterboxWidth;
+float2 _spadScale;
+sampler2D _letterboxInput;
+RWTexture2D<float4> _letterboxTexture;
+
+[numthreads(8, 8, 1)]
+void LetterBoxImage(uint2 id : SV_DispatchThreadID)
+{
+    if (any(id > _letterboxWidth)) return;
+
+    // UV coordinates
+    float2 uv = (id + 0.5) / _letterboxWidth;
+
+    // Scaling
+    uv = (uv - 0.5) * _spadScale + 0.5;
+
+    // UV gradients
+    float2 duv_dx = float2(+1.0 / _letterboxWidth * _spadScale.x, 0);
+    float2 duv_dy = float2(0, -1.0 / _letterboxWidth * _spadScale.y);
+
+    // Texture sample
+    float3 rgb = tex2Dgrad(_letterboxInput, uv, duv_dx, duv_dy).rgb;
+
+    // Bounding
+    rgb *= all(uv > 0) && all (uv < 1);
+
+    _letterboxTexture[id] = float4(rgb, 1);
+}
+
+
+// Kernel 1
 float _deltaTime;
 uint _upperBodyOnly;
 StructuredBuffer<PoseDetection> _poseDetections;
@@ -61,14 +94,13 @@ void PoseRegionUpdate(uint id : SV_DispatchThreadID)
 }
 
 
-// Kernel 1
+// Kernel 2
 #define CROP_IMAGE_SIZE 256
 
-float2 _spad_scale;
 sampler2D _inputTexture;
 StructuredBuffer<PoseRegion> _cropRegion;
 
-RWTexture2D<float3> _cropedTexture;
+RWTexture2D<float4> _cropedTexture;
 
 [numthreads(8, 8, 1)]
 void CropImage(uint2 id : SV_DispatchThreadID)
@@ -80,7 +112,7 @@ void CropImage(uint2 id : SV_DispatchThreadID)
     uv = mul(xform, float4(uv, 0, 1)).xy;
 
     // De-letterboxing
-    uv = (uv - 0.5) * _spad_scale + 0.5;
+    uv = (uv - 0.5) * _spadScale + 0.5;
 
     // UV gradients
     float2 duv_dx = mul(xform, float4(1.0 / CROP_IMAGE_SIZE, 0, 0, 0)).xy;
@@ -90,11 +122,11 @@ void CropImage(uint2 id : SV_DispatchThreadID)
     float3 rgb = tex2Dgrad(_inputTexture, uv, duv_dx, duv_dy).rgb;
 
     // // Tensor element output
-    _cropedTexture[id] = rgb;
+    _cropedTexture[id] = float4(rgb, 1);
 }
 
 
-// Kernel 2
+// Kernel 3
 
 #ifdef UPPER_BODY
     #define POST_KEYPOINT_COUNT 25
@@ -114,7 +146,7 @@ RWStructuredBuffer<float4> _post_output;
 void PostProcess(uint id : SV_DispatchThreadID)
 {
     PoseRegion region = _post_region[0];
-
+    float score = _post_input[id].w;
     float3 x = _post_input[id].xyz;
     float3 p_x = _post_output[id].xyz;
     float3 p_dx = _post_output[id + POST_KEYPOINT_COUNT].xyz;
@@ -126,6 +158,6 @@ void PostProcess(uint id : SV_DispatchThreadID)
     float3 dx = lpf_Step_dx(x, p_x, p_dx, lpf_params);
     x = lpf_Step_x(x, p_x, dx, lpf_params);
 
-    _post_output[id] = float4(x, 1);
+    _post_output[id] = float4(x, score);
     _post_output[id + POST_KEYPOINT_COUNT] = float4(dx, 1);
 }
