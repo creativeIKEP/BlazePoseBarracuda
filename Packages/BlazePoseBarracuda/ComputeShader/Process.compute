@@ -152,7 +152,7 @@ void PostProcess(uint id : SV_DispatchThreadID)
     float3 p_dx = _post_output[id + POST_KEYPOINT_COUNT].xyz;
 
     x = mul(region.cropMatrix, float4(x, 1)).xyz;
-    x.xy *= _post_scale;
+    x.xy = (x.xy - 0.5) * _spadScale + 0.5;
 
     float3 lpf_params = float3(30, 1.5, _post_dt);
     float3 dx = lpf_Step_dx(x, p_x, p_dx, lpf_params);

@@ -5,6 +5,7 @@
     #include "UnityCG.cginc"
 
     StructuredBuffer<float4> _vertices;
+    float2 _uiScale;
 
     struct v2f{
         float4 position: SV_POSITION;
@@ -19,8 +20,8 @@
 
         float x = p.x + size * lerp(-1, 1, vid == 1) * (vid < 2);
         float y = p.y + size * lerp(-1, 1, vid == 3) * (vid >= 2);
-        x = (2 * x - 1) * _ScreenParams.y / _ScreenParams.x;
-        y =  2 * y - 1;
+        x = (2 * x - 1) * _uiScale.x / _ScreenParams.x;
+        y = (2 * y - 1) *  _uiScale.y / _ScreenParams.y;
 
         float score = p.w;
 

@@ -5,7 +5,6 @@ public class WebCamInput : MonoBehaviour
 {
     [SerializeField] string webCamName;
     [SerializeField] Vector2 webCamResolution;
-    [SerializeField] RawImage rawImage;
     [SerializeField] Texture staticInput;
 
     // Provide input image Texture.
@@ -27,12 +26,12 @@ public class WebCamInput : MonoBehaviour
         }
 
         inputRT = new RenderTexture((int)webCamResolution.x, (int)webCamResolution.y, 0);
-        rawImage.texture = inputImageTexture;
     }
 
     void Update()
     {
         if(staticInput != null) return;
+        if(!webCamTexture.didUpdateThisFrame) return;
 
         var aspect1 = (float)webCamTexture.width / webCamTexture.height;
         var aspect2 = (float)inputRT.width / inputRT.height;
