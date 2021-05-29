@@ -6,7 +6,6 @@ public class PoseVisuallizer : MonoBehaviour
 {
     [SerializeField] WebCamInput webCamInput;
     [SerializeField] RawImage inputImageUI;
-    public RawImage image;
     [SerializeField] Shader shader;
     [SerializeField] BlazePoseResource blazePoseResource;
     [SerializeField] bool isUpperBodyOnly;
@@ -18,7 +17,6 @@ public class PoseVisuallizer : MonoBehaviour
     void Start(){
         material = new Material(shader);
         detecter = new BlazePoseDetecter(blazePoseResource, isUpperBodyOnly);
-        image.texture = detecter.cropedTexture;
     }
 
     void LateUpdate(){

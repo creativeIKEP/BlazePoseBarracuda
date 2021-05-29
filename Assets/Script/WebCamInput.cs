@@ -4,7 +4,7 @@ using UnityEngine.UI;
 public class WebCamInput : MonoBehaviour
 {
     [SerializeField] string webCamName;
-    [SerializeField] Vector2 webCamResolution;
+    [SerializeField] Vector2 webCamResolution = new Vector2(1920, 1080);
     [SerializeField] Texture staticInput;
 
     // Provide input image Texture.

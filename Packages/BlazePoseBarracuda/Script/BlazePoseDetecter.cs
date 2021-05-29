@@ -12,7 +12,7 @@ namespace Mediapipe.BlazePose{
         PoseDetecter detecter;
         PoseLandmarker landmarker;
         ComputeShader cs;
-        public RenderTexture letterboxTexture, cropedTexture;
+        RenderTexture letterboxTexture, cropedTexture;
         ComputeBuffer poseRegionBuffer;
         public ComputeBuffer outputBuffer;
         public int vertexCount => landmarker.vertexCount;
