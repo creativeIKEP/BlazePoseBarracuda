@@ -47,11 +47,11 @@ public class PoseVisuallizer : MonoBehaviour
         material.SetBuffer("_vertices", detecter.outputBuffer);
         material.SetVector("_uiScale", new Vector2(w, h));
         // Draw (25 or 33) landmark points.
-        Graphics.DrawProceduralNow(MeshTopology.Lines, 4, detecter.vertexCount);
+        Graphics.DrawProceduralNow(MeshTopology.Triangles, 6, detecter.vertexCount);
 
         material.SetPass(1);
         material.SetVectorArray("_linePair", linePair);
-        Graphics.DrawProceduralNow(MeshTopology.Lines, 2, isUpperBodyOnly ? UPPER_BODY_LINE_NUM : FULL_BODY_LINE_NUM);
+        Graphics.DrawProceduralNow(MeshTopology.Triangles, 6, isUpperBodyOnly ? UPPER_BODY_LINE_NUM : FULL_BODY_LINE_NUM);
     }
 
     void OnApplicationQuit(){
