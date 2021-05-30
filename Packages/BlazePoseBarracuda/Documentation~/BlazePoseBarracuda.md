@@ -1,16 +1,4 @@
-# BlazePoseBarracuda
-![demo_tabletop](/screenshot/demo_tabletop.gif)
-![demo_fitness](/screenshot/demo_fitness.gif)
-![demo_dance](/screenshot/demo_dance.gif)
-
-**BlazePoseBarracuda** is a human pose estimation neural network that works with a monocular color camera.
-
-BlazePoseBarracuda is Unity Package that runs the [Mediapipe Pose(BlazePose)](https://google.github.io/mediapipe/solutions/pose) pipeline on the [Unity](https://unity.com/).
-
-BlazePoseBarracuda has 2 estimation modes(`Upper Body Only` and `Full Body`) and, can be switched on the realtime.
-
-BlazePoseBarracuda implementation is inspired by [HandPoseBarracuda](https://github.com/keijiro/HandPoseBarracuda) and I referenced [his](https://github.com/keijiro) source code.(Thanks, [keijiro](https://github.com/keijiro)!).
-
+# BlazePoseBarracuda Usage Documentation
 ### Dependencies
 BlazePoseBarracuda uses the following sub packages:
 - [PoseDetectionBarracuda](https://github.com/creativeIKEP/PoseDetectionBarracuda)
@@ -42,7 +30,7 @@ Example is below.
 
 ### Usage Demo
 Below code is the demo that estimate human pose from a image and get pose landmark.
-Check ["/Assets/Script/PoseVisuallizer.cs"]("/Assets/Script/PoseVisuallizer.cs") and ["/Assets/Scenes/SampleScene.unity"](/Assets/Scenes/SampleScene.unity) for BlazePoseBarracuda usage demo details.
+Check ["/Assets/Script/PoseVisuallizer.cs"](https://github.com/creativeIKEP/BlazePoseBarracuda/blob/main/Assets/Script/PoseVisuallizer.cs) and ["/Assets/Scenes/SampleScene.unity"](https://github.com/creativeIKEP/BlazePoseBarracuda/blob/main/Assets/Scenes/SampleScene.unity) for BlazePoseBarracuda usage demo details.
 ```cs
 using UnityEngine;
 using Mediapipe.BlazePose;
@@ -100,17 +88,3 @@ public class <YourClassName>: MonoBehaviour
   }
 }
 ```
-
-### Demo Image
-Videos for demo scene(["/Assets/Scenes/SampleScene.unity"](/Assets/Scenes/SampleScene.unity)) was downloaded from [pixabay](https://pixabay.com).
-- ["/Assets/Images/Doctor.mp4"](/Assets/Images/Doctor.mp4) was downloaded from [here](https://pixabay.com/videos/id-49811).
-- ["/Assets/Images/Fitness.mp4"](/Assets/Images/Fitness.mp4) was downloaded from [here](https://pixabay.com/videos/id-72464).
-- ["/Assets/Images/Dance.mp4"](/Assets/Images/Dance.mp4) was downloaded from [here](https://pixabay.com/videos/id-21827).
-
-### Author
-[IKEP](https://ikep.jp)
-
-### LICENSE
-Copyright (c) 2021 IKEP
-
-[Apache-2.0](/LICENSE.md)
