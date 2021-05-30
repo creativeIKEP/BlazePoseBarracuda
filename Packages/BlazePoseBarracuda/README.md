@@ -41,10 +41,12 @@ Example is below.
 ```
 
 ### Demo Image
-Videos for demo scene(["/Assets/Scenes/SampleScene.unity"](/Assets/Scenes/SampleScene.unity)) was downloaded from [pixabay](https://pixabay.com).
-- ["/Assets/Images/Doctor.mp4"](/Assets/Images/Doctor.mp4) was downloaded from [here](https://pixabay.com/videos/id-49811).
-- ["/Assets/Images/Fitness.mp4"](/Assets/Images/Fitness.mp4) was downloaded from [here](https://pixabay.com/videos/id-72464).
-- ["/Assets/Images/Dance.mp4"](/Assets/Images/Dance.mp4) was downloaded from [here](https://pixabay.com/videos/id-21827).
+Videos for demo was downloaded from [pixabay](https://pixabay.com).
+Downloaded videos URLs are below.
+
+- https://pixabay.com/videos/id-49811.
+- https://pixabay.com/videos/id-72464.
+- https://pixabay.com/videos/id-21827.
 
 ### Author
 [IKEP](https://ikep.jp)
