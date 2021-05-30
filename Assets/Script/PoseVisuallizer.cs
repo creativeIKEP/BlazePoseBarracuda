@@ -9,6 +9,7 @@ public class PoseVisuallizer : MonoBehaviour
     [SerializeField] RawImage inputImageUI;
     [SerializeField] Shader shader;
     [SerializeField] BlazePoseResource blazePoseResource;
+    [SerializeField, Range(0, 1)] float humanExistThreshold = 0.5f;
     [SerializeField] bool isUpperBodyOnly;
 
     Material material;
@@ -42,16 +43,19 @@ public class PoseVisuallizer : MonoBehaviour
         var w = inputImageUI.rectTransform.rect.width;
         var h = inputImageUI.rectTransform.rect.height;
 
-        material.SetPass(0);
         // Set predicted pose landmark results.
         material.SetBuffer("_vertices", detecter.outputBuffer);
+        material.SetInt("_keypointCount", detecter.vertexCount);
+        material.SetFloat("_humanExistThreshold", humanExistThreshold);
         material.SetVector("_uiScale", new Vector2(w, h));
-        // Draw (25 or 33) landmark points.
-        Graphics.DrawProceduralNow(MeshTopology.Triangles, 6, detecter.vertexCount);
-
-        material.SetPass(1);
         material.SetVectorArray("_linePair", linePair);
+
+        material.SetPass(0);
         Graphics.DrawProceduralNow(MeshTopology.Triangles, 6, isUpperBodyOnly ? UPPER_BODY_LINE_NUM : FULL_BODY_LINE_NUM);
+
+        // Draw (25 or 33) landmark points.
+        material.SetPass(1);
+        Graphics.DrawProceduralNow(MeshTopology.Triangles, 6, detecter.vertexCount);
     }
 
     void OnApplicationQuit(){

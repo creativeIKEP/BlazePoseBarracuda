@@ -5,6 +5,8 @@
     #include "UnityCG.cginc"
 
     StructuredBuffer<float4> _vertices;
+    uint _keypointCount;
+    float _humanExistThreshold;
     float2 _uiScale;
     float4 _linePair[35];
 
@@ -12,6 +14,30 @@
         float4 position: SV_POSITION;
         float4 color: COLOR;
     };
+
+    v2f VertexLine(uint vid : SV_VertexID, uint iid : SV_InstanceID)
+    {   
+        uint2 pairIndex = (uint2)_linePair[iid].xy;
+        float4 p0 = _vertices[pairIndex[0]];
+        float4 p1 = _vertices[pairIndex[1]];
+
+        float2 p0_p1 = p1.xy - p0.xy;
+        float2 orthogonal = float2(-p0_p1.y, p0_p1.x);
+        float len = length(p0_p1);
+        const float size = 0.005;
+        
+        float2 p = p0.xy + len * lerp(0, 1, vid & 1) * normalize(p0_p1);
+        p += size * lerp(-0.5, 0.5, vid < 2 || vid == 5) * normalize(orthogonal);
+        p = (2 * p - 1) * _uiScale / _ScreenParams.xy;
+
+        float score = lerp(p0.w, p1.w, vid & 1);
+        float isHumanExist = _vertices[_keypointCount].x;
+
+        v2f o;
+        o.position = float4(p, 0, 1);
+        o.color = (isHumanExist >= _humanExistThreshold) ? float4(0, 1, 0, score) : float4(0, 0, 1, score);
+        return o;
+    }
 
     v2f VertexPoint(uint vid : SV_VertexID, uint iid : SV_InstanceID)
     {   
@@ -31,30 +57,6 @@
         return o;
     }
 
-    v2f VertexLine(uint vid : SV_VertexID, uint iid : SV_InstanceID)
-    {   
-        uint2 pairIndex = (uint2)_linePair[iid].xy;
-        float4 p0 = _vertices[pairIndex[0]];
-        float4 p1 = _vertices[pairIndex[1]];
-
-        float2 p0_p1 = p1.xy - p0.xy;
-        float2 orthogonal = float2(-p0_p1.y, p0_p1.x);
-        float len = length(p0_p1);
-        const float size = 0.005;
-        
-        float2 p = p0.xy + len * lerp(0, 1, vid & 1) * normalize(p0_p1);
-        p += size * lerp(-0.5, 0.5, vid < 2 || vid == 5) * normalize(orthogonal);
-
-        float score = lerp(p0.w, p1.w, vid & 1);
-
-        p = (2 * p - 1) * _uiScale / _ScreenParams.xy;
-
-        v2f o;
-        o.position = float4(p, 0, 1);
-        o.color = float4(0, 1, 0, score);
-        return o;
-    }
-
     float4 Fragment(v2f i): SV_Target
     {
         return i.color;
@@ -69,14 +71,14 @@
         Pass
         {
             CGPROGRAM
-            #pragma vertex VertexPoint
+            #pragma vertex VertexLine
             #pragma fragment Fragment
             ENDCG
         }
         Pass
         {
             CGPROGRAM
-            #pragma vertex VertexLine
+            #pragma vertex VertexPoint
             #pragma fragment Fragment
             ENDCG
         }

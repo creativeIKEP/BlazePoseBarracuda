@@ -14,6 +14,7 @@ namespace Mediapipe.BlazePose{
         ComputeShader cs;
         RenderTexture letterboxTexture, cropedTexture;
         ComputeBuffer poseRegionBuffer;
+        ComputeBuffer previousOutputBuffer;
         public ComputeBuffer outputBuffer;
         public int vertexCount => landmarker.vertexCount;
 
@@ -31,7 +32,8 @@ namespace Mediapipe.BlazePose{
             cropedTexture.Create();
 
             poseRegionBuffer = new ComputeBuffer(1, sizeof(float) * 24);
-            outputBuffer = new ComputeBuffer(landmarker.vertexCount * 2, sizeof(float) * 4);
+            previousOutputBuffer = new ComputeBuffer(landmarker.vertexCount, sizeof(float) * 4);
+            outputBuffer = new ComputeBuffer(landmarker.vertexCount + 1, sizeof(float) * 4);
         }
 
         public void ProcessImage(
@@ -70,17 +72,19 @@ namespace Mediapipe.BlazePose{
 
             landmarker.ProcessImage(cropedTexture, isUpperBody);
 
-            if(landmarker.vertexCount * 2 != outputBuffer.count){
+            if(landmarker.vertexCount + 1 != outputBuffer.count){
+                previousOutputBuffer?.Dispose();
+                previousOutputBuffer = new ComputeBuffer(landmarker.vertexCount, sizeof(float) * 4);
                 outputBuffer?.Dispose();
-                outputBuffer = new ComputeBuffer(landmarker.vertexCount * 2, sizeof(float) * 4);
-                if(isUpperBody) cs.EnableKeyword("UPPER_BODY");
-                else cs.DisableKeyword("UPPER_BODY");
+                outputBuffer = new ComputeBuffer(landmarker.vertexCount + 1, sizeof(float) * 4);
             }
 
+            cs.SetInt("_keypointCount", landmarker.vertexCount);
             cs.SetFloat("_post_dt", Time.deltaTime);
             cs.SetFloat("_post_scale", scale.y);
             cs.SetBuffer(3, "_post_input", landmarker.outputBuffer);
             cs.SetBuffer(3, "_post_region", poseRegionBuffer);
+            cs.SetBuffer(3, "_post_previous_output", previousOutputBuffer);
             cs.SetBuffer(3, "_post_output", outputBuffer);
             cs.Dispatch(3, 1, 1, 1);
         }
@@ -91,6 +95,7 @@ namespace Mediapipe.BlazePose{
             letterboxTexture.Release();
             cropedTexture.Release();
             poseRegionBuffer.Dispose();
+            previousOutputBuffer.Dispose();
             outputBuffer.Dispose();
         }
     }
