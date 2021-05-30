@@ -49,7 +49,7 @@ using Mediapipe.BlazePose;
 
 public class <YourClassName>: MonoBehaviour
 {
-  // Set "Packages/ResourceSet/BlazePose.asset" on the Unity Editor.
+  // Set "Packages/BlazePoseBarracuda/ResourceSet/BlazePose.asset" on the Unity Editor.
   [SerializeField] BlazePoseResource blazePoseResource;
   [SerializeField] bool isUpperBodyOnly;
 

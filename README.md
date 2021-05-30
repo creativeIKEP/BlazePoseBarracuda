@@ -42,14 +42,14 @@ Example is below.
 
 ### Usage Demo
 Below code is the demo that estimate human pose from a image and get pose landmark.
-Check ["/Assets/Script/PoseVisuallizer.cs"]("/Assets/Script/PoseVisuallizer.cs") and ["/Assets/Scenes/SampleScene.unity"](/Assets/Scenes/SampleScene.unity) for BlazePoseBarracuda usage demo details.
+Check ["/Assets/Script/PoseVisuallizer.cs"](/Assets/Script/PoseVisuallizer.cs) and ["/Assets/Scenes/SampleScene.unity"](/Assets/Scenes/SampleScene.unity) for BlazePoseBarracuda usage demo details.
 ```cs
 using UnityEngine;
 using Mediapipe.BlazePose;
 
 public class <YourClassName>: MonoBehaviour
 {
-  // Set "Packages/ResourceSet/BlazePose.asset" on the Unity Editor.
+  // Set "Packages/BlazePoseBarracuda/ResourceSet/BlazePose.asset" on the Unity Editor.
   [SerializeField] BlazePoseResource blazePoseResource;
   [SerializeField] bool isUpperBodyOnly;
 
