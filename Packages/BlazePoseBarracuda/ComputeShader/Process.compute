@@ -17,6 +17,7 @@ float2 _spadScale;
 sampler2D _letterboxInput;
 RWTexture2D<float4> _letterboxTexture;
 
+// Generate letter-box image texture.
 [numthreads(8, 8, 1)]
 void LetterBoxImage(uint2 id : SV_DispatchThreadID)
 {
@@ -47,27 +48,31 @@ float _deltaTime;
 uint _upperBodyOnly;
 StructuredBuffer<PoseDetection> _poseDetections;
 ByteAddressBuffer _poseDetectionCount;
-
 RWStructuredBuffer<PoseRegion> _poseRegions;
 
+// Update PoseRegion.
 [numthreads(1, 1, 1)]
 void PoseRegionUpdate(uint id : SV_DispatchThreadID)
 {
     uint count = _poseDetectionCount.Load(0);
     if (count <= 0) return;
 
+    // Get pose detection result by neural network model.
     const PoseDetection pd = _poseDetections[0];
 
     float2 hip = pd.keyPoints[0];
     float2 shoulder = pd.keyPoints[2];
 
+    // Rotation center point
     float2 center = _upperBodyOnly ? shoulder : hip;
     float2 roi = _upperBodyOnly ? pd.keyPoints[3] : pd.keyPoints[1];
 
+    // Image crop size
     float sizeX = abs(roi.x - center.x);
     float sizeY = abs(roi.y - center.y);
     float size = max(sizeX, sizeY) * 3.0;
 
+    // Pose angle
     float target = PI * 0.5;
     const float2 up = shoulder - hip;
     float angle = atan2(-up.y, up.x) - target;
@@ -77,8 +82,11 @@ void PoseRegionUpdate(uint id : SV_DispatchThreadID)
 
     // Low pass filter parameters and input vector
     const float3 lpf_params = float3(2, 1.5f, _deltaTime);
+    // This frame region
     const float4 box = float4(center, size, angle);
+    // Calculate PoseRegion delta with low pass filter for decrease jitter.
     pr.dBox = lpf_Step_dx(box, pr.box, pr.dBox, lpf_params);
+    // Calculate PoseRegion with low pass filter for decrease jitter.
     pr.box = lpf_Step_x(box, pr.box, pr.dBox, lpf_params);
 
     // Region crop matrix update
@@ -89,7 +97,6 @@ void PoseRegionUpdate(uint id : SV_DispatchThreadID)
     float4x4 m5 = makeTranslationMatrix(-0.5);
     pr.cropMatrix = mul(mul(mul(mul(m1, m2), m3), m4), m5);
 
-    // Compute buffer update
     _poseRegions[0] = pr;
 }
 
@@ -99,9 +106,9 @@ void PoseRegionUpdate(uint id : SV_DispatchThreadID)
 
 sampler2D _inputTexture;
 StructuredBuffer<PoseRegion> _cropRegion;
-
 RWTexture2D<float4> _cropedTexture;
 
+// Crop image from PoseRegion.
 [numthreads(8, 8, 1)]
 void CropImage(uint2 id : SV_DispatchThreadID)
 {
@@ -121,45 +128,55 @@ void CropImage(uint2 id : SV_DispatchThreadID)
     // Texture sample
     float3 rgb = tex2Dgrad(_inputTexture, uv, duv_dx, duv_dy).rgb;
 
-    // // Tensor element output
+    // Set pixel value.
     _cropedTexture[id] = float4(rgb, 1);
 }
 
 
 // Kernel 3
 uint _keypointCount;
-float _post_dt;
-float _post_scale;
+float _postDeltatime;
 
-StructuredBuffer<float4> _post_input;
-StructuredBuffer<PoseRegion> _post_region;
-RWStructuredBuffer<float4> _post_previous_output;
+StructuredBuffer<float4> _postInput;
+StructuredBuffer<PoseRegion> _postRegion;
 
-RWStructuredBuffer<float4> _post_output;
+RWStructuredBuffer<float4> _postDeltaOutput;
+RWStructuredBuffer<float4> _postOutput;
 
+// Map pose landmark to cordinates on the original input image.
 [numthreads(33 + 1, 1, 1)]
 void PostProcess(uint id : SV_DispatchThreadID)
 {
     if(id > _keypointCount) return;
 
     if(id == _keypointCount){
-        _post_output[id] = _post_input[_keypointCount];
+        // Set human exist score in last index.
+        _postOutput[id] = _postInput[_keypointCount];
     }
     else{
-        PoseRegion region = _post_region[0];
-        float score = _post_input[id].w;
-        float3 x = _post_input[id].xyz;
-        float3 p_x = _post_output[id].xyz;
-        float3 p_dx = _post_previous_output[id].xyz;
+        PoseRegion region = _postRegion[0];
+        // Visiblity of pose landmark
+        float score = _postInput[id].w;
+        // Pose landmark
+        float3 x = _postInput[id].xyz;
+        // Pose landmark on previous frame
+        float3 p_x = _postOutput[id].xyz;
+        // Pose landmark delta
+        float3 p_dx = _postDeltaOutput[id].xyz;
 
+        // Map to cordinates of letter-box image from croped image.
         x = mul(region.cropMatrix, float4(x, 1)).xyz;
+        // Map to cordinates of original input image from letter-box image.
         x.xy = (x.xy - 0.5) * _spadScale + 0.5;
 
-        float3 lpf_params = float3(30, 1.5, _post_dt);
+        // Calculate with low pass filter for decrease jitter.
+        float3 lpf_params = float3(30, 1.5, _postDeltatime);
         float3 dx = lpf_Step_dx(x, p_x, p_dx, lpf_params);
         x = lpf_Step_x(x, p_x, dx, lpf_params);
 
-        _post_output[id] = float4(x, score);
-        _post_previous_output[id] = float4(dx, 1);
+        // Set pose landmark delta for the next frame processing.
+        _postDeltaOutput[id] = float4(dx, 1);
+        // Pose landmark final result
+        _postOutput[id] = float4(x, score);
     }
 }
