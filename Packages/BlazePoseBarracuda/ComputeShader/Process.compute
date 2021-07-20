@@ -196,6 +196,8 @@ void PostProcess(uint id : SV_DispatchThreadID)
         // Pose world landmark delta
         p_dx =_postDeltaOutputWorld[id].xyz;
 
+        x = mul(makeRotationMatrix(region.box.w), float4(x, 1)).xyz;
+
         // Calculate with low pass filter for decrease jitter.
         dx = lpf_Step_dx(x, p_x, p_dx, lpf_params);
         x = lpf_Step_x(x, p_x, dx, lpf_params);
