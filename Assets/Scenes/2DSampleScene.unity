@@ -319,7 +319,8 @@ MonoBehaviour:
   inputImageUI: {fileID: 1918731417}
   shader: {fileID: 4800000, guid: 33ca7d622658d844e81c06b6a8ac78fd, type: 3}
   blazePoseResource: {fileID: 11400000, guid: f19b49e33e0e57347b280b0184fcb7cb, type: 2}
-  isUpperBodyOnly: 1
+  humanExistThreshold: 0.5
+  poseLandmarkModel: 1
 --- !u!4 &1280492717
 Transform:
   m_ObjectHideFlags: 0
