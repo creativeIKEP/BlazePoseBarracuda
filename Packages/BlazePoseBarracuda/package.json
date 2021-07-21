@@ -6,7 +6,7 @@
   "name": "jp.ikep.mediapipe.blazepose",
   "displayName": "BlazePoseBarracuda",
   "description": "BlazePose (Mediapipe Pose) for Unity Barracuda.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "unity": "2020.3",
   "unityRelease": "6f1",
   "keywords": [
