@@ -88,13 +88,13 @@
       "hash": "dbea398395b5f325dae91581c1d16a3e97d0a1e3"
     },
     "jp.ikep.mediapipe.poselandmark": {
-      "version": "https://github.com/creativeIKEP/PoseLandmarkBarracuda.git?path=Packages/PoseLandmarkBarracuda#v1.0.1",
+      "version": "https://github.com/creativeIKEP/PoseLandmarkBarracuda.git?path=Packages/PoseLandmarkBarracuda#v1.1.0",
       "depth": 0,
       "source": "git",
       "dependencies": {
         "com.unity.barracuda": "2.0.0-pre.3"
       },
-      "hash": "59b8bcf6740300f02fed8c1132abf23665370a33"
+      "hash": "40d26ee2c51cfeebbb7847dfcd7dce2acb0d139d"
     },
     "com.unity.modules.ai": {
       "version": "1.0.0",
