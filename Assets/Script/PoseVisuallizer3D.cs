@@ -3,8 +3,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using Mediapipe.BlazePose;
 
-public class PoseVisuallizer : MonoBehaviour
+public class PoseVisuallizer3D : MonoBehaviour
 {
+    [SerializeField] Camera mainCamera;
     [SerializeField] WebCamInput webCamInput;
     [SerializeField] RawImage inputImageUI;
     [SerializeField] Shader shader;
@@ -35,6 +36,10 @@ public class PoseVisuallizer : MonoBehaviour
         detecter = new BlazePoseDetecter(blazePoseResource, poseLandmarkModel);
     }
 
+    void Update(){
+        mainCamera.transform.RotateAround(Vector3.zero, Vector3.up, 0.1f);
+    }
+
     void LateUpdate(){
         inputImageUI.texture = webCamInput.inputImageTexture;
 
@@ -44,23 +49,20 @@ public class PoseVisuallizer : MonoBehaviour
     } 
 
     void OnRenderObject(){
-        var w = inputImageUI.rectTransform.rect.width;
-        var h = inputImageUI.rectTransform.rect.height;
-
-        // Set predicted pose landmark results.
-        material.SetBuffer("_vertices", detecter.outputBuffer);
+        // Set predicted pose world landmark results.
+        material.SetBuffer("_worldVertices", detecter.worldLandmarkBuffer);
         // Set pose landmark counts.
         material.SetInt("_keypointCount", detecter.vertexCount);
         material.SetFloat("_humanExistThreshold", humanExistThreshold);
-        material.SetVector("_uiScale", new Vector2(w, h));
         material.SetVectorArray("_linePair", linePair);
+        material.SetMatrix("_invViewMatrix", mainCamera.worldToCameraMatrix.inverse);
 
-        // Draw 35 body topology lines.
-        material.SetPass(0);
+        // Draw 35 world body topology lines.
+        material.SetPass(2);
         Graphics.DrawProceduralNow(MeshTopology.Triangles, 6, BODY_LINE_NUM);
 
-        // Draw 33 landmark points.
-        material.SetPass(1);
+        // Draw 33 world landmark points.
+        material.SetPass(3);
         Graphics.DrawProceduralNow(MeshTopology.Triangles, 6, detecter.vertexCount);
     }
 

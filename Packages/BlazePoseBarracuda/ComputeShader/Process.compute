@@ -138,10 +138,13 @@ uint _keypointCount;
 float _postDeltatime;
 
 StructuredBuffer<float4> _postInput;
+StructuredBuffer<float4> _postInputWorld;
 StructuredBuffer<PoseRegion> _postRegion;
 
 RWStructuredBuffer<float4> _postDeltaOutput;
 RWStructuredBuffer<float4> _postOutput;
+RWStructuredBuffer<float4> _postDeltaOutputWorld;
+RWStructuredBuffer<float4> _postOutputWorld;
 
 // Map pose landmark to cordinates on the original input image.
 [numthreads(33 + 1, 1, 1)]
@@ -152,8 +155,10 @@ void PostProcess(uint id : SV_DispatchThreadID)
     if(id == _keypointCount){
         // Set human exist score in last index.
         _postOutput[id] = _postInput[_keypointCount];
+        _postOutputWorld[id] = _postInputWorld[_keypointCount];
     }
     else{
+        // Process for normalized landmark
         PoseRegion region = _postRegion[0];
         // Visiblity of pose landmark
         float score = _postInput[id].w;
@@ -178,5 +183,28 @@ void PostProcess(uint id : SV_DispatchThreadID)
         _postDeltaOutput[id] = float4(dx, 1);
         // Pose landmark final result
         _postOutput[id] = float4(x, score);
+
+        // ---------
+
+        // Process for world landmark
+        // Visiblity of pose world landmark
+        score = _postInputWorld[id].w;
+        // Pose world landmark
+        x = _postInputWorld[id].xyz;
+        // Pose world landmark on previous frame
+        p_x = _postOutputWorld[id].xyz;
+        // Pose world landmark delta
+        p_dx =_postDeltaOutputWorld[id].xyz;
+
+        x = mul(makeRotationMatrix(region.box.w), float4(x, 1)).xyz;
+
+        // Calculate with low pass filter for decrease jitter.
+        dx = lpf_Step_dx(x, p_x, p_dx, lpf_params);
+        x = lpf_Step_x(x, p_x, dx, lpf_params);
+
+        // Set pose world landmark delta for the next frame processing.
+        _postDeltaOutputWorld[id] = float4(dx, 1);
+        // Pose world landmark final result
+        _postOutputWorld[id] = float4(x, score);
     }
 }
