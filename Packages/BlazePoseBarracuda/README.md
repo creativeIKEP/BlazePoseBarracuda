@@ -1,7 +1,6 @@
 # BlazePoseBarracuda
-![demo_tabletop](/screenshot/demo_tabletop.gif)
-![demo_fitness](/screenshot/demo_fitness.gif)
-![demo_dance](/screenshot/demo_dance.gif)
+![demo_fitness](https://user-images.githubusercontent.com/34697515/126510967-e27a1e96-2b87-424d-988b-0e09d5929532.gif)
+![demo_dance](https://user-images.githubusercontent.com/34697515/126510818-caa45abf-cfd3-443c-a0ab-af755517bfdf.gif)
 
 **BlazePoseBarracuda** is a human 2D/3D pose estimation neural network that works with a monocular color camera.
 
@@ -126,7 +125,6 @@ public class <YourClassName>: MonoBehaviour
 Videos for demos was downloaded from [pixabay](https://pixabay.com).
 Downloaded videos URLs are below.
 
-- https://pixabay.com/videos/id-49811.
 - https://pixabay.com/videos/id-72464.
 - https://pixabay.com/videos/id-21827.
 
