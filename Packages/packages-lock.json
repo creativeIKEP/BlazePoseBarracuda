@@ -94,7 +94,7 @@
       "dependencies": {
         "com.unity.barracuda": "2.0.0-pre.3"
       },
-      "hash": "40d26ee2c51cfeebbb7847dfcd7dce2acb0d139d"
+      "hash": "d00fb661261fca016fc338a142a254523d66662c"
     },
     "com.unity.modules.ai": {
       "version": "1.0.0",
