@@ -16,6 +16,9 @@ BlazePoseBarracuda uses the following sub packages:
 - [PoseLandmarkBarracuda](https://github.com/creativeIKEP/PoseLandmarkBarracuda)
 
 ## Install
+BlazePoseBarracuda can be installed from npm or GitHub URL.
+
+### Install from npm (Recommend)
 BlazePoseBarracuda can be installed by adding following sections to the manifest file (`Packages/manifest.json`).
 
 To the `scopedRegistries` section:
@@ -44,6 +47,30 @@ Finally, the manifest file looks like below:
         "jp.ikep.mediapipe.blazepose": "1.1.1",
         ...
     }
+}
+```
+
+### Install from GitHub URL
+BlazePoseBarracuda can be installed by adding below URLs from the Unity Package Manager's window
+```
+https://github.com/creativeIKEP/PoseDetectionBarracuda.git?path=Packages/PoseDetectionBarracuda#v1.0.0
+```
+```
+https://github.com/creativeIKEP/PoseLandmarkBarracuda.git?path=Packages/PoseLandmarkBarracuda#v1.1.0
+```
+```
+https://github.com/creativeIKEP/BlazePoseBarracuda.git?path=Packages/BlazePoseBarracuda#v1.1.1
+```
+or, appending lines to your manifest file(`Packages/manifest.json`) `dependencies` block.
+Example is below.
+```
+{
+  "dependencies": {
+    "jp.ikep.mediapipe.posedetection": "https://github.com/creativeIKEP/PoseDetectionBarracuda.git?path=Packages/PoseDetectionBarracuda#v1.0.0",
+    "jp.ikep.mediapipe.poselandmark": "https://github.com/creativeIKEP/PoseLandmarkBarracuda.git?path=Packages/PoseLandmarkBarracuda#v1.1.0",
+    "jp.ikep.mediapipe.blazepose": "https://github.com/creativeIKEP/BlazePoseBarracuda.git?path=Packages/BlazePoseBarracuda#v1.1.1",
+    ...
+  }
 }
 ```
 
