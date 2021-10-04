@@ -1,0 +1,18 @@
+name: Publish Unity Package to npmjs.com
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish_unity_package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v2
+      with:
+        registry-url: 'https://registry.npmjs.org'
+    - run: npm publish
+      working-directory: Packages/BlazePoseBarracuda
+      env:
+        NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
