@@ -10,36 +10,44 @@ BlazePoseBarracuda has 2 neural network models(`lite` and `full`) and, can be sw
 
 BlazePoseBarracuda implementation is inspired by [HandPoseBarracuda](https://github.com/keijiro/HandPoseBarracuda) and I referenced [his](https://github.com/keijiro) source code.(Thanks, [keijiro](https://github.com/keijiro)!).
 
-### Dependencies
+## Dependencies
 BlazePoseBarracuda uses the following sub packages:
 - [PoseDetectionBarracuda](https://github.com/creativeIKEP/PoseDetectionBarracuda)
 - [PoseLandmarkBarracuda](https://github.com/creativeIKEP/PoseLandmarkBarracuda)
 
-### Install
-BlazePoseBarracuda can be installed by adding below URLs from the Unity Package Manager's window
-```
-https://github.com/creativeIKEP/PoseDetectionBarracuda.git?path=Packages/PoseDetectionBarracuda#v1.0.0
-```
-```
-https://github.com/creativeIKEP/PoseLandmarkBarracuda.git?path=Packages/PoseLandmarkBarracuda#v1.1.0
-```
-```
-https://github.com/creativeIKEP/BlazePoseBarracuda.git?path=Packages/BlazePoseBarracuda#v1.1.0
-```
-or, appending lines to your manifest file(`Packages/manifest.json`) `dependencies` block.
-Example is below.
+## Install
+BlazePoseBarracuda can be installed by adding following sections to the manifest file (`Packages/manifest.json`).
+
+To the `scopedRegistries` section:
 ```
 {
-  "dependencies": {
-    "jp.ikep.mediapipe.posedetection": "https://github.com/creativeIKEP/PoseDetectionBarracuda.git?path=Packages/PoseDetectionBarracuda#v1.0.0",
-    "jp.ikep.mediapipe.poselandmark": "https://github.com/creativeIKEP/PoseLandmarkBarracuda.git?path=Packages/PoseLandmarkBarracuda#v1.1.0",
-    "jp.ikep.mediapipe.blazepose": "https://github.com/creativeIKEP/BlazePoseBarracuda.git?path=Packages/BlazePoseBarracuda#v1.1.0",
-    ...
-  }
+  "name": "creativeikep",
+  "url": "https://registry.npmjs.com",
+  "scopes": [ "jp.ikep" ]
+}
+```
+To the `dependencies` section:
+```
+"jp.ikep.mediapipe.blazepose": "1.1.1"
+```
+Finally, the manifest file looks like below:
+```
+{
+    "scopedRegistries": [
+        {
+            "name": "creativeikep",
+            "url": "https://registry.npmjs.com",
+            "scopes": [ "jp.ikep" ]
+        }
+    ],
+    "dependencies": {
+        "jp.ikep.mediapipe.blazepose": "1.1.1",
+        ...
+    }
 }
 ```
 
-### Usage Demo
+## Usage Demo
 Below code is the demo that estimate human pose from a image and get pose landmark.
 Check ["/Assets/Script/PoseVisuallizer.cs"](/Assets/Script/PoseVisuallizer.cs) and ["/Assets/Scenes/2DSampleScene.unity"](/Assets/Scenes/2DSampleScene.unity) for BlazePoseBarracuda usage demo details in the 2D pose estimation.
 Check ["/Assets/Script/PoseVisuallizer3D.cs"](/Assets/Script/PoseVisuallizer3D.cs) and ["/Assets/Scenes/3DSampleScene.unity"](/Assets/Scenes/3DSampleScene.unity) for BlazePoseBarracuda usage demo details in the 3D pose estimation.
@@ -121,15 +129,15 @@ public class <YourClassName>: MonoBehaviour
 }
 ```
 
-### Demo Image
+## Demo Image
 Videos for demo scenes(["/Assets/Scenes/2DSampleScene.unity"](/Assets/Scenes/2DSampleScene.unity) and ["/Assets/Scenes/3DSampleScene.unity"](/Assets/Scenes/3DSampleScene.unity)) was downloaded from [pixabay](https://pixabay.com).
 - ["/Assets/Images/Fitness.mp4"](/Assets/Images/Fitness.mp4) was downloaded from [here](https://pixabay.com/videos/id-72464).
 - ["/Assets/Images/Dance.mp4"](/Assets/Images/Dance.mp4) was downloaded from [here](https://pixabay.com/videos/id-21827).
 
-### Author
+## Author
 [IKEP](https://ikep.jp)
 
-### LICENSE
+## LICENSE
 Copyright (c) 2021 IKEP
 
 [Apache-2.0](/LICENSE.md)
