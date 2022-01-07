@@ -134,17 +134,21 @@ void CropImage(uint2 id : SV_DispatchThreadID)
 
 
 // Kernel 3
+
+#define LPF_WINDOW_MAX_COUNT 5
+
+uint _isWorldProcess;
 uint _keypointCount;
 float _postDeltatime;
+float _velocity_scale;
+uint _rvfWindowCount;
 
 StructuredBuffer<float4> _postInput;
-StructuredBuffer<float4> _postInputWorld;
 StructuredBuffer<PoseRegion> _postRegion;
 
-RWStructuredBuffer<float4> _postDeltaOutput;
+RWTexture2D<float4> _postRvfWindow;
+RWStructuredBuffer<float3> _postLastValueScale;
 RWStructuredBuffer<float4> _postOutput;
-RWStructuredBuffer<float4> _postDeltaOutputWorld;
-RWStructuredBuffer<float4> _postOutputWorld;
 
 // Map pose landmark to cordinates on the original input image.
 [numthreads(33 + 1, 1, 1)]
@@ -155,7 +159,6 @@ void PostProcess(uint id : SV_DispatchThreadID)
     if(id == _keypointCount){
         // Set human exist score in last index.
         _postOutput[id] = _postInput[_keypointCount];
-        _postOutputWorld[id] = _postInputWorld[_keypointCount];
     }
     else{
         // Process for normalized landmark
@@ -166,45 +169,68 @@ void PostProcess(uint id : SV_DispatchThreadID)
         float3 x = _postInput[id].xyz;
         // Pose landmark on previous frame
         float3 p_x = _postOutput[id].xyz;
-        // Pose landmark delta
-        float3 p_dx = _postDeltaOutput[id].xyz;
+        // previous value scale for relative velocity filter
+        float3 p_value_scale = _postLastValueScale[id];
 
-        // Map to cordinates of letter-box image from croped image.
-        x = mul(region.cropMatrix, float4(x, 1)).xyz;
-        // Map to cordinates of original input image from letter-box image.
-        x.xy = (x.xy - 0.5) * _spadScale + 0.5;
+        if(_isWorldProcess){
+            x = mul(makeRotationMatrix(region.box.w), float4(x, 1)).xyz;
+        }
+        else{
+            // Map to cordinates of letter-box image from croped image.
+            x = mul(region.cropMatrix, float4(x, 1)).xyz;
+            // Map to cordinates of original input image from letter-box image.
+            x.xy = (x.xy - 0.5) * _spadScale + 0.5;
+        }
 
-        // Calculate with low pass filter for decrease jitter.
-        float3 lpf_params = float3(30, 1.5, _postDeltatime);
-        float3 dx = lpf_Step_dx(x, p_x, p_dx, lpf_params);
-        x = lpf_Step_x(x, p_x, dx, lpf_params);
+        // Apply relative velocity filter
+        // reference: 
+        // https://github.com/asus4/tf-lite-unity-sample/blob/26e49bf4a45a550f84f12635a97102a3e207009e/Packages/com.github.asus4.mediapipe/Runtime/RelativeVelocityFilter.cs
+        float min_x = _postInput[0].x;
+        float max_x = _postInput[0].x;
+        float min_y = _postInput[0].y;
+        float max_y = _postInput[0].y;
+        for(int k = 0; k<33; k++){
+            if(min_x > _postInput[k].x) min_x = _postInput[k].x;
+            if(max_x < _postInput[k].x) max_x = _postInput[k].x;
+            if(min_y > _postInput[k].y) min_y = _postInput[k].y;
+            if(max_y < _postInput[k].y) max_y = _postInput[k].y;
+        }
 
-        // Set pose landmark delta for the next frame processing.
-        _postDeltaOutput[id] = float4(dx, 1);
-        // Pose landmark final result
+        float2 size = float2(max_x - min_x, max_y - min_y);
+        float3 value_scale = 1.0f / ((size.x + size.y) / 2);
+        int window_size = min(_rvfWindowCount, LPF_WINDOW_MAX_COUNT);
+
+        if(window_size > 0){
+            float3 distance = x * value_scale - p_x * p_value_scale;
+            float3 distance_sum = distance;
+            float duration_sum = _postDeltatime;
+            float duration_max = (1 + window_size) * _postDeltatime;
+            
+            for(int i = 0; i < window_size; i++){
+                float3 p_distance = _postRvfWindow[uint2(i, id)].xyz;
+                float p_duration = _postRvfWindow[uint2(i, id)].w;
+                if(duration_sum + p_duration > duration_max) break;
+                distance_sum += p_distance;
+                duration_sum +=p_duration;
+            }
+
+            float3 velocity = distance_sum / duration_sum;
+            float3 alpha = 1.0 - 1.0 / (1.0 + _velocity_scale * abs(velocity));
+            x = lerp(p_x, x, alpha);
+
+            // window enqueue & dequeue for next frame
+            if(window_size == LPF_WINDOW_MAX_COUNT){
+                for(int j = 0; j < window_size - 1; j++){
+                    _postRvfWindow[uint2(j, id)] = _postRvfWindow[uint2(j+1, id)];
+                }
+                _postRvfWindow[uint2(window_size - 1, id)] = float4(distance, _postDeltatime);
+            }
+            else{
+                _postRvfWindow[uint2(window_size, id)] = float4(distance, _postDeltatime);
+            }
+        }
+
         _postOutput[id] = float4(x, score);
-
-        // ---------
-
-        // Process for world landmark
-        // Visiblity of pose world landmark
-        score = _postInputWorld[id].w;
-        // Pose world landmark
-        x = _postInputWorld[id].xyz;
-        // Pose world landmark on previous frame
-        p_x = _postOutputWorld[id].xyz;
-        // Pose world landmark delta
-        p_dx =_postDeltaOutputWorld[id].xyz;
-
-        x = mul(makeRotationMatrix(region.box.w), float4(x, 1)).xyz;
-
-        // Calculate with low pass filter for decrease jitter.
-        dx = lpf_Step_dx(x, p_x, p_dx, lpf_params);
-        x = lpf_Step_x(x, p_x, dx, lpf_params);
-
-        // Set pose world landmark delta for the next frame processing.
-        _postDeltaOutputWorld[id] = float4(dx, 1);
-        // Pose world landmark final result
-        _postOutputWorld[id] = float4(x, score);
+        _postLastValueScale[id] = value_scale;
     }
 }
