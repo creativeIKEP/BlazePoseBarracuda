@@ -8,6 +8,7 @@
 #include "PoseRegion.cginc"
 #include "LowPassFilter.cginc"
 #include "Misc.cginc"
+#include "ColorSpace.cginc"
 #include "Packages/jp.ikep.mediapipe.posedetection/ComputeShader/Common.cginc"
 
 
@@ -38,6 +39,11 @@ void LetterBoxImage(uint2 id : SV_DispatchThreadID)
 
     // Bounding
     rgb *= all(uv > 0) && all (uv < 1);
+
+    // Comvert sRGB color (= Liner color space) because Compute Shader texture output is not converted.
+    #if !UNITY_COLORSPACE_GAMMA
+    rgb = LinearToSRGB(rgb);
+    #endif
 
     _letterboxTexture[id] = float4(rgb, 1);
 }
@@ -128,6 +134,11 @@ void CropImage(uint2 id : SV_DispatchThreadID)
     // Texture sample
     float3 rgb = tex2Dgrad(_inputTexture, uv, duv_dx, duv_dy).rgb;
 
+    // Comvert sRGB color (= Liner color space) because Compute Shader texture output is not converted.
+    #if !UNITY_COLORSPACE_GAMMA
+    rgb = LinearToSRGB(rgb);
+    #endif
+    
     // Set pixel value.
     _cropedTexture[id] = float4(rgb, 1);
 }
