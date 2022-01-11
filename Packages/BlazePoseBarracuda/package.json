@@ -17,8 +17,8 @@
     "BlazePose"
   ],
   "dependencies": {
-    "jp.ikep.mediapipe.posedetection": "1.0.0",
-    "jp.ikep.mediapipe.poselandmark": "1.1.0"
+    "jp.ikep.mediapipe.posedetection": "1.0.1",
+    "jp.ikep.mediapipe.poselandmark": "1.1.1"
   },
   "license": "Apache-2.0",
   "repository": "github:creativeIKEP/BlazePoseBarracuda"
