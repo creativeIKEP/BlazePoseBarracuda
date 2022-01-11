@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 using Mediapipe.PoseDetection;
 using Mediapipe.PoseLandmark;
 
@@ -58,6 +59,8 @@ namespace Mediapipe.BlazePose{
         RenderTexture letterboxTexture, cropedTexture, rvfWindow, rvfWindowWorld;
         ComputeBuffer poseRegionBuffer, lastValueScale, lastValueScaleWorld;
         int rvfWindowCount;
+        // Array of pose landmarks for accessing data with CPU (C#). 
+        Vector4[] poseLandmarks, poseWorldLandmarks;
         #endregion
 
         #region public method
@@ -92,6 +95,8 @@ namespace Mediapipe.BlazePose{
             // Output length is pose landmark count(33) + human exist flag(1).
             outputBuffer = new ComputeBuffer(landmarker.vertexCount + 1, sizeof(float) * 4);
             worldLandmarkBuffer = new ComputeBuffer(landmarker.vertexCount + 1, sizeof(float) * 4);
+            poseLandmarks = new Vector4[landmarker.vertexCount + 1];
+            poseWorldLandmarks = new Vector4[landmarker.vertexCount + 1];
         }
 
         // Process pipeline is refered https://google.github.io/mediapipe/solutions/pose#ml-pipeline.
@@ -167,6 +172,14 @@ namespace Mediapipe.BlazePose{
             cs.Dispatch(3, 1, 1, 1);
 
             rvfWindowCount = Mathf.Min(rvfWindowCount + 1, rvfWindowMaxCount);
+
+            // Cache landmarks to array for accessing data with CPU (C#).  
+            AsyncGPUReadback.Request(outputBuffer, request => {
+                request.GetData<Vector4>().CopyTo(poseLandmarks);
+            });
+            AsyncGPUReadback.Request(worldLandmarkBuffer, request => {
+                request.GetData<Vector4>().CopyTo(poseWorldLandmarks);
+            });
         }
 
         public void Dispose(){
@@ -182,6 +195,10 @@ namespace Mediapipe.BlazePose{
             outputBuffer.Dispose();
             worldLandmarkBuffer.Dispose();
         }
+
+        // Provide cached landmarks.
+        public Vector4 GetPoseLandmark(int index) => poseLandmarks[index];
+        public Vector4 GetPoseWorldLandmark(int index) => poseWorldLandmarks[index];
         #endregion
     }
 }
