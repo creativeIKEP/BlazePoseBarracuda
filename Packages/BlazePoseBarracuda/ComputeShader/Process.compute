@@ -5,18 +5,19 @@
 
 #define PI 3.14159265359
 
+#include "UnityCG.cginc"
 #include "PoseRegion.cginc"
 #include "LowPassFilter.cginc"
 #include "Misc.cginc"
-#include "ColorSpace.cginc"
 #include "Packages/jp.ikep.mediapipe.posedetection/ComputeShader/Common.cginc"
 
 
 // Kernel 0
+uint _isLinerColorSpace;
 uint _letterboxWidth;
 float2 _spadScale;
 sampler2D _letterboxInput;
-RWTexture2D<float4> _letterboxTexture;
+RWStructuredBuffer<float> _letterboxTextureBuffer;
 
 // Generate letter-box image texture.
 [numthreads(8, 8, 1)]
@@ -25,7 +26,7 @@ void LetterBoxImage(uint2 id : SV_DispatchThreadID)
     if (any(id > _letterboxWidth)) return;
 
     // UV coordinates
-    float2 uv = (id + 0.5) / _letterboxWidth;
+    float2 uv = float2(0.5 + id.x, _letterboxWidth - 0.5 - id.y) / _letterboxWidth;
 
     // Scaling
     uv = (uv - 0.5) * _spadScale + 0.5;
@@ -41,11 +42,12 @@ void LetterBoxImage(uint2 id : SV_DispatchThreadID)
     rgb *= all(uv > 0) && all (uv < 1);
 
     // Comvert sRGB color (= Liner color space) because Compute Shader texture output is not converted.
-    #if !UNITY_COLORSPACE_GAMMA
-    rgb = LinearToSRGB(rgb);
-    #endif
+    if(_isLinerColorSpace) rgb = LinearToGammaSpace(rgb);
 
-    _letterboxTexture[id] = float4(rgb, 1);
+    uint offs = (id.y * _letterboxWidth + id.x) * 3;
+    _letterboxTextureBuffer[offs + 0] = rgb.r;
+    _letterboxTextureBuffer[offs + 1] = rgb.g;
+    _letterboxTextureBuffer[offs + 2] = rgb.b;
 }
 
 
@@ -112,7 +114,7 @@ void PoseRegionUpdate(uint id : SV_DispatchThreadID)
 
 sampler2D _inputTexture;
 StructuredBuffer<PoseRegion> _cropRegion;
-RWTexture2D<float4> _cropedTexture;
+RWStructuredBuffer<float> _cropedTextureBuffer;
 
 // Crop image from PoseRegion.
 [numthreads(8, 8, 1)]
@@ -121,7 +123,7 @@ void CropImage(uint2 id : SV_DispatchThreadID)
     float4x4 xform = _cropRegion[0].cropMatrix;
 
     // UV coordinates
-    float2 uv = (id + 0.5) / CROP_IMAGE_SIZE;
+    float2 uv = float2(0.5 + id.x, CROP_IMAGE_SIZE - 0.5 - id.y) / CROP_IMAGE_SIZE;
     uv = mul(xform, float4(uv, 0, 1)).xy;
 
     // De-letterboxing
@@ -135,12 +137,12 @@ void CropImage(uint2 id : SV_DispatchThreadID)
     float3 rgb = tex2Dgrad(_inputTexture, uv, duv_dx, duv_dy).rgb;
 
     // Comvert sRGB color (= Liner color space) because Compute Shader texture output is not converted.
-    #if !UNITY_COLORSPACE_GAMMA
-    rgb = LinearToSRGB(rgb);
-    #endif
-    
-    // Set pixel value.
-    _cropedTexture[id] = float4(rgb, 1);
+    if(_isLinerColorSpace) rgb = LinearToGammaSpace(rgb);
+
+    uint offs = (id.y * CROP_IMAGE_SIZE + id.x) * 3;
+    _cropedTextureBuffer[offs + 0] = rgb.r;
+    _cropedTextureBuffer[offs + 1] = rgb.g;
+    _cropedTextureBuffer[offs + 2] = rgb.b;
 }
 
 
@@ -157,7 +159,7 @@ uint _rvfWindowCount;
 StructuredBuffer<float4> _postInput;
 StructuredBuffer<PoseRegion> _postRegion;
 
-RWTexture2D<float4> _postRvfWindow;
+RWStructuredBuffer<float> _postRvfWindowBuffer;
 RWStructuredBuffer<float3> _postLastValueScale;
 RWStructuredBuffer<float4> _postOutput;
 
@@ -200,7 +202,7 @@ void PostProcess(uint id : SV_DispatchThreadID)
         float max_x = _postInput[0].x;
         float min_y = _postInput[0].y;
         float max_y = _postInput[0].y;
-        for(int k = 0; k<33; k++){
+        for(uint k = 0; k < _keypointCount; k++){
             if(min_x > _postInput[k].x) min_x = _postInput[k].x;
             if(max_x < _postInput[k].x) max_x = _postInput[k].x;
             if(min_y > _postInput[k].y) min_y = _postInput[k].y;
@@ -210,7 +212,6 @@ void PostProcess(uint id : SV_DispatchThreadID)
         float2 size = float2(max_x - min_x, max_y - min_y);
         float3 value_scale = 1.0f / ((size.x + size.y) / 2);
         int window_size = min(_rvfWindowCount, LPF_WINDOW_MAX_COUNT);
-
         if(window_size > 0){
             float3 distance = x * value_scale - p_x * p_value_scale;
             float3 distance_sum = distance;
@@ -218,8 +219,9 @@ void PostProcess(uint id : SV_DispatchThreadID)
             float duration_max = (1 + window_size) * _postDeltatime;
             
             for(int i = 0; i < window_size; i++){
-                float3 p_distance = _postRvfWindow[uint2(i, id)].xyz;
-                float p_duration = _postRvfWindow[uint2(i, id)].w;
+                uint offs = (i * _keypointCount + id) * 4;
+                float3 p_distance = float3(_postRvfWindowBuffer[offs + 0], _postRvfWindowBuffer[offs + 1], _postRvfWindowBuffer[offs + 2]);
+                float p_duration = _postRvfWindowBuffer[offs + 3];
                 if(duration_sum + p_duration > duration_max) break;
                 distance_sum += p_distance;
                 duration_sum +=p_duration;
@@ -232,12 +234,25 @@ void PostProcess(uint id : SV_DispatchThreadID)
             // window enqueue & dequeue for next frame
             if(window_size == LPF_WINDOW_MAX_COUNT){
                 for(int j = 0; j < window_size - 1; j++){
-                    _postRvfWindow[uint2(j, id)] = _postRvfWindow[uint2(j+1, id)];
+                    uint offs1 = (j * _keypointCount + id) * 4;
+                    uint offs2 = ((j + 1) * _keypointCount + id) * 4;
+                    _postRvfWindowBuffer[offs1 + 0] = _postRvfWindowBuffer[offs2 + 0];
+                    _postRvfWindowBuffer[offs1 + 1] = _postRvfWindowBuffer[offs2 + 1];
+                    _postRvfWindowBuffer[offs1 + 2] = _postRvfWindowBuffer[offs2 + 2];
+                    _postRvfWindowBuffer[offs1 + 3] = _postRvfWindowBuffer[offs2 + 3];
                 }
-                _postRvfWindow[uint2(window_size - 1, id)] = float4(distance, _postDeltatime);
+                uint offs = ((window_size - 1) * _keypointCount + id) * 4;
+                _postRvfWindowBuffer[offs + 0] = distance.x;
+                _postRvfWindowBuffer[offs + 1] = distance.y;
+                _postRvfWindowBuffer[offs + 2] = distance.z;
+                _postRvfWindowBuffer[offs + 3] = _postDeltatime;
             }
             else{
-                _postRvfWindow[uint2(window_size, id)] = float4(distance, _postDeltatime);
+                uint offs = (window_size * _keypointCount + id) * 4;
+                _postRvfWindowBuffer[offs + 0] = distance.x;
+                _postRvfWindowBuffer[offs + 1] = distance.y;
+                _postRvfWindowBuffer[offs + 2] = distance.z;
+                _postRvfWindowBuffer[offs + 3] = _postDeltatime;
             }
         }
 

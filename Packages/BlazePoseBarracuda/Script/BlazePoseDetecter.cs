@@ -56,8 +56,8 @@ namespace Mediapipe.BlazePose{
         PoseDetecter detecter;
         PoseLandmarker landmarker;
         ComputeShader cs;
-        RenderTexture letterboxTexture, cropedTexture, rvfWindow, rvfWindowWorld;
-        ComputeBuffer poseRegionBuffer, lastValueScale, lastValueScaleWorld;
+        ComputeBuffer letterboxTextureBuffer, poseRegionBuffer, cropedTextureBuffer;
+        ComputeBuffer rvfWindowBuffer, rvfWindowWorldBuffer, lastValueScale, lastValueScaleWorld;
         int rvfWindowCount;
         // Array of pose landmarks for accessing data with CPU (C#). 
         Vector4[] poseLandmarks, poseWorldLandmarks;
@@ -69,26 +69,14 @@ namespace Mediapipe.BlazePose{
             detecter = new PoseDetecter(resource.detectionResource);
             landmarker = new PoseLandmarker(resource.landmarkResource, (PoseLandmarkModel)blazePoseModel);
 
-            // `letterboxTexture` is set readable/writable RenderTexture.
-            letterboxTexture = new RenderTexture(DETECTION_INPUT_IMAGE_SIZE, DETECTION_INPUT_IMAGE_SIZE, 0, RenderTextureFormat.ARGB32);
-            letterboxTexture.enableRandomWrite = true;
-            letterboxTexture.Create();
-
-            // `cropedTexture` is set readable/writable RenderTexture.
-            cropedTexture = new RenderTexture(LANDMARK_INPUT_IMAGE_SIZE, LANDMARK_INPUT_IMAGE_SIZE, 0, RenderTextureFormat.ARGB32);
-            cropedTexture.enableRandomWrite = true;
-            cropedTexture.Create();
-
-            // `rvfWindow` and 'rvfWindowWorld' is set readable/writable RenderTexture.
-            rvfWindow = new RenderTexture(rvfWindowMaxCount, vertexCount, 0, RenderTextureFormat.ARGBFloat);
-            rvfWindow.enableRandomWrite = true;
-            rvfWindow.Create();
-            rvfWindowWorld = new RenderTexture(rvfWindowMaxCount, vertexCount, 0, RenderTextureFormat.ARGBFloat);
-            rvfWindowWorld.enableRandomWrite = true;
-            rvfWindowWorld.Create();
-            rvfWindowCount =  0;
-
+            letterboxTextureBuffer = new ComputeBuffer(DETECTION_INPUT_IMAGE_SIZE * DETECTION_INPUT_IMAGE_SIZE * 3, sizeof(float));
             poseRegionBuffer = new ComputeBuffer(1, sizeof(float) * 24);
+            cropedTextureBuffer = new ComputeBuffer(LANDMARK_INPUT_IMAGE_SIZE * LANDMARK_INPUT_IMAGE_SIZE * 3, sizeof(float));
+
+            rvfWindowCount =  0;
+            rvfWindowBuffer = new ComputeBuffer(rvfWindowMaxCount * landmarker.vertexCount * 4, sizeof(float));
+            rvfWindowWorldBuffer = new ComputeBuffer(rvfWindowMaxCount * landmarker.vertexCount * 4, sizeof(float));
+
             lastValueScale = new ComputeBuffer(landmarker.vertexCount, sizeof(float) * 3);
             lastValueScaleWorld = new ComputeBuffer(landmarker.vertexCount, sizeof(float) * 3);
 
@@ -116,14 +104,15 @@ namespace Mediapipe.BlazePose{
             // Image scaling and padding
             // Output image is letter-box image.
             // For example, top and bottom pixels of `letterboxTexture` are black if `inputTexture` size is 1920(width)*1080(height)
+            cs.SetInt("_isLinerColorSpace", QualitySettings.activeColorSpace == ColorSpace.Linear ? 1 : 0);
             cs.SetInt("_letterboxWidth", DETECTION_INPUT_IMAGE_SIZE);
             cs.SetVector("_spadScale", scale);
             cs.SetTexture(0, "_letterboxInput", inputTexture);
-            cs.SetTexture(0, "_letterboxTexture", letterboxTexture);
+            cs.SetBuffer(0, "_letterboxTextureBuffer", letterboxTextureBuffer);
             cs.Dispatch(0, DETECTION_INPUT_IMAGE_SIZE / 8, DETECTION_INPUT_IMAGE_SIZE / 8, 1);
 
             // Predict Pose detection.
-            detecter.ProcessImage(letterboxTexture, poseThreshold, iouThreshold);
+            detecter.ProcessImage(letterboxTextureBuffer, poseThreshold, iouThreshold);
 
             // Update Pose Region from detected results.
             cs.SetFloat("_deltaTime", Time.deltaTime);
@@ -136,14 +125,14 @@ namespace Mediapipe.BlazePose{
             // Scale and pad to letter-box image and crop pose region from letter-box image.
             cs.SetTexture(2, "_inputTexture", inputTexture);
             cs.SetBuffer(2, "_cropRegion", poseRegionBuffer);
-            cs.SetTexture(2, "_cropedTexture", cropedTexture);
+            cs.SetBuffer(2, "_cropedTextureBuffer", cropedTextureBuffer);
             cs.Dispatch(2, LANDMARK_INPUT_IMAGE_SIZE / 8, LANDMARK_INPUT_IMAGE_SIZE / 8, 1);
 
             // Predict pose landmark.
-            landmarker.ProcessImage(cropedTexture, (PoseLandmarkModel)blazePoseModel);
+            landmarker.ProcessImage(cropedTextureBuffer, (PoseLandmarkModel)blazePoseModel);
 
             float fps = 1.0f / Time.unscaledDeltaTime;
-            float velocity_scale = 3.0f / fps;
+            float velocity_scale = 1.0f / fps;
 
             // Map to cordinates of `inputTexture` from pose landmarks on croped letter-box image.
             cs.SetInt("_isWorldProcess", 0);
@@ -153,7 +142,7 @@ namespace Mediapipe.BlazePose{
             cs.SetInt("_rvfWindowCount", rvfWindowCount);
             cs.SetBuffer(3, "_postInput", landmarker.outputBuffer);
             cs.SetBuffer(3, "_postRegion", poseRegionBuffer);
-            cs.SetTexture(3, "_postRvfWindow", rvfWindow);
+            cs.SetBuffer(3, "_postRvfWindowBuffer", rvfWindowBuffer);
             cs.SetBuffer(3, "_postLastValueScale", lastValueScale);
             cs.SetBuffer(3, "_postOutput", outputBuffer);
             cs.Dispatch(3, 1, 1, 1);
@@ -166,7 +155,7 @@ namespace Mediapipe.BlazePose{
             cs.SetInt("_rvfWindowCount", rvfWindowCount);
             cs.SetBuffer(3, "_postInput", landmarker.worldLandmarkBuffer);
             cs.SetBuffer(3, "_postRegion", poseRegionBuffer);
-            cs.SetTexture(3, "_postRvfWindow", rvfWindowWorld);
+            cs.SetBuffer(3, "_postRvfWindowBuffer", rvfWindowWorldBuffer);
             cs.SetBuffer(3, "_postLastValueScale", lastValueScaleWorld);
             cs.SetBuffer(3, "_postOutput", worldLandmarkBuffer);
             cs.Dispatch(3, 1, 1, 1);
@@ -185,11 +174,11 @@ namespace Mediapipe.BlazePose{
         public void Dispose(){
             detecter.Dispose();
             landmarker.Dispose();
-            letterboxTexture.Release();
-            cropedTexture.Release();
-            rvfWindow.Release();
-            rvfWindowWorld.Release();
+            letterboxTextureBuffer.Dispose();
             poseRegionBuffer.Dispose();
+            cropedTextureBuffer.Dispose();
+            rvfWindowBuffer.Dispose();
+            rvfWindowWorldBuffer.Dispose();
             lastValueScale.Dispose();
             lastValueScaleWorld.Dispose();
             outputBuffer.Dispose();
