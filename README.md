@@ -1,6 +1,6 @@
 # BlazePoseBarracuda
-![demo_fitness](https://user-images.githubusercontent.com/34697515/126510967-e27a1e96-2b87-424d-988b-0e09d5929532.gif)
-![demo_dance](https://user-images.githubusercontent.com/34697515/126510818-caa45abf-cfd3-443c-a0ab-af755517bfdf.gif)
+<img src="https://user-images.githubusercontent.com/34697515/153871000-da4d9a9a-db93-49f4-8ebf-28e20fe135fa.gif" width="100%">
+<img src="https://user-images.githubusercontent.com/34697515/153871121-eb05554c-0785-4986-b8ba-ea8eb959634b.gif" width="100%">
 
 **BlazePoseBarracuda** is a human 2D/3D pose estimation neural network that works with a monocular color camera.
 
@@ -157,9 +157,9 @@ public class <YourClassName>: MonoBehaviour
 ```
 
 ## Demo Image
-Videos for demo scenes(["/Assets/Scenes/2DSampleScene.unity"](/Assets/Scenes/2DSampleScene.unity) and ["/Assets/Scenes/3DSampleScene.unity"](/Assets/Scenes/3DSampleScene.unity)) was downloaded from [pixabay](https://pixabay.com).
-- ["/Assets/Images/Fitness.mp4"](/Assets/Images/Fitness.mp4) was downloaded from [here](https://pixabay.com/videos/id-72464).
-- ["/Assets/Images/Dance.mp4"](/Assets/Images/Dance.mp4) was downloaded from [here](https://pixabay.com/videos/id-21827).
+Videos for demo scenes(["/Assets/Scenes/2DSampleScene.unity"](/Assets/Scenes/2DSampleScene.unity) and ["/Assets/Scenes/3DSampleScene.unity"](/Assets/Scenes/3DSampleScene.unity)) was downloaded from [pexels](https://www.pexels.com/ja-jp/).
+- ["/Assets/Images/SignLanguage.mp4"](/Assets/Images/SignLanguage.mp4) was downloaded from [here](https://www.pexels.com/ja-jp/video/7559286/).
+- ["/Assets/Images/jump.mp4"](/Assets/Images/jump.mp4) was downloaded from [here](https://www.pexels.com/ja-jp/video/3048954/).
 
 ## Author
 [IKEP](https://ikep.jp)
