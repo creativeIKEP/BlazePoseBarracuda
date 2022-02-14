@@ -8,9 +8,7 @@ public class PoseVisuallizer : MonoBehaviour
     [SerializeField] WebCamInput webCamInput;
     [SerializeField] RawImage inputImageUI;
     [SerializeField] Shader shader;
-    [SerializeField] BlazePoseResource blazePoseResource;
     [SerializeField, Range(0, 1)] float humanExistThreshold = 0.5f;
-    [SerializeField] BlazePoseModel poseLandmarkModel;
 
     Material material;
     BlazePoseDetecter detecter;
@@ -32,7 +30,7 @@ public class PoseVisuallizer : MonoBehaviour
 
     void Start(){
         material = new Material(shader);
-        detecter = new BlazePoseDetecter(blazePoseResource, poseLandmarkModel);
+        detecter = new BlazePoseDetecter();
     }
 
     void LateUpdate(){
@@ -40,7 +38,7 @@ public class PoseVisuallizer : MonoBehaviour
 
         // Predict pose by neural network model.
         // Switchable anytime models with 2nd argment.
-        detecter.ProcessImage(webCamInput.inputImageTexture, poseLandmarkModel);
+        detecter.ProcessImage(webCamInput.inputImageTexture);
     } 
 
     void OnRenderObject(){

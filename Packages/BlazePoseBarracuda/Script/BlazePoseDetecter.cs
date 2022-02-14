@@ -64,7 +64,9 @@ namespace Mediapipe.BlazePose{
         #endregion
 
         #region public method
-        public BlazePoseDetecter(BlazePoseResource resource, BlazePoseModel blazePoseModel){
+        public BlazePoseDetecter(BlazePoseModel blazePoseModel = BlazePoseModel.full){
+            var resource = Resources.Load<BlazePoseResource>("BlazePose");
+
             cs = resource.cs;
             detecter = new PoseDetecter(resource.detectionResource);
             landmarker = new PoseLandmarker(resource.landmarkResource, (PoseLandmarkModel)blazePoseModel);
@@ -91,7 +93,7 @@ namespace Mediapipe.BlazePose{
         // Check above URL or BlazePose paper(https://arxiv.org/abs/2006.10204) for details.
         public void ProcessImage(
             Texture inputTexture, 
-            BlazePoseModel blazePoseModel, 
+            BlazePoseModel blazePoseModel = BlazePoseModel.full, 
             float poseThreshold = 0.75f, 
             float iouThreshold = 0.3f)
         {
