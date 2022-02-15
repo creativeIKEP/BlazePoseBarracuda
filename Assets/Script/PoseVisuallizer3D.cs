@@ -42,12 +42,28 @@ public class PoseVisuallizer3D : MonoBehaviour
         inputImageUI.texture = webCamInput.inputImageTexture;
 
         // Predict pose by neural network model.
-        // Switchable anytime models with 2nd argment.
         detecter.ProcessImage(webCamInput.inputImageTexture);
+
+        // Output landmark values(33 values) and the score whether human pose is visible (1 values).
+        for(int i = 0; i < detecter.vertexCount + 1; i++){
+            /*
+            0~32 index datas are pose world landmark.
+            Check below Mediapipe document about relation between index and landmark position.
+            https://google.github.io/mediapipe/solutions/pose#pose-landmark-model-blazepose-ghum-3d
+            Each data factors are
+            x, y and z: Real-world 3D coordinates in meters with the origin at the center between hips.
+            w: The score of whether the world landmark position is visible ([0, 1]).
+        
+            33 index data is the score whether human pose is visible ([0, 1]).
+            This data is (score, 0, 0, 0).
+            */
+            Debug.LogFormat("{0}: {1}", i, detecter.GetPoseWorldLandmark(i));
+        }
+        Debug.Log("---");
     } 
 
     void OnRenderObject(){
-        // Set predicted pose world landmark results.
+        // Use predicted pose world landmark results on the ComputeBuffer (GPU) memory.
         material.SetBuffer("_worldVertices", detecter.worldLandmarkBuffer);
         // Set pose landmark counts.
         material.SetInt("_keypointCount", detecter.vertexCount);
