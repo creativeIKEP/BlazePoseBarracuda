@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 using Mediapipe.PoseDetection;
 using Mediapipe.PoseLandmark;
 
@@ -48,47 +49,51 @@ namespace Mediapipe.BlazePose{
         const int DETECTION_INPUT_IMAGE_SIZE = 128;
         // Pose landmark neural network model's input size.
         const int LANDMARK_INPUT_IMAGE_SIZE = 256;
+        const int rvfWindowMaxCount = 5;
         #endregion
 
         #region private variable
         PoseDetecter detecter;
         PoseLandmarker landmarker;
         ComputeShader cs;
-        RenderTexture letterboxTexture, cropedTexture;
-        ComputeBuffer poseRegionBuffer;
-        ComputeBuffer deltaOutputBuffer;
-        ComputeBuffer deltaOutputWorldBuffer;
+        ComputeBuffer letterboxTextureBuffer, poseRegionBuffer, cropedTextureBuffer;
+        ComputeBuffer rvfWindowBuffer, rvfWindowWorldBuffer, lastValueScale, lastValueScaleWorld;
+        int rvfWindowCount;
+        // Array of pose landmarks for accessing data with CPU (C#). 
+        Vector4[] poseLandmarks, poseWorldLandmarks;
         #endregion
 
         #region public method
-        public BlazePoseDetecter(BlazePoseResource resource, BlazePoseModel blazePoseModel){
+        public BlazePoseDetecter(BlazePoseModel blazePoseModel = BlazePoseModel.full){
+            var resource = Resources.Load<BlazePoseResource>("BlazePose");
+
             cs = resource.cs;
             detecter = new PoseDetecter(resource.detectionResource);
             landmarker = new PoseLandmarker(resource.landmarkResource, (PoseLandmarkModel)blazePoseModel);
 
-            // `letterboxTexture` is set readable/writable RenderTexture.
-            letterboxTexture = new RenderTexture(DETECTION_INPUT_IMAGE_SIZE, DETECTION_INPUT_IMAGE_SIZE, 0, RenderTextureFormat.ARGB32);
-            letterboxTexture.enableRandomWrite = true;
-            letterboxTexture.Create();
-
-            // `cropedTexture` is set readable/writable RenderTexture.
-            cropedTexture = new RenderTexture(LANDMARK_INPUT_IMAGE_SIZE, LANDMARK_INPUT_IMAGE_SIZE, 0, RenderTextureFormat.ARGB32);
-            cropedTexture.enableRandomWrite = true;
-            cropedTexture.Create();
-
+            letterboxTextureBuffer = new ComputeBuffer(DETECTION_INPUT_IMAGE_SIZE * DETECTION_INPUT_IMAGE_SIZE * 3, sizeof(float));
             poseRegionBuffer = new ComputeBuffer(1, sizeof(float) * 24);
-            deltaOutputBuffer = new ComputeBuffer(landmarker.vertexCount, sizeof(float) * 4);
-            deltaOutputWorldBuffer = new ComputeBuffer(landmarker.vertexCount, sizeof(float) * 4);
+            cropedTextureBuffer = new ComputeBuffer(LANDMARK_INPUT_IMAGE_SIZE * LANDMARK_INPUT_IMAGE_SIZE * 3, sizeof(float));
+
+            rvfWindowCount =  0;
+            rvfWindowBuffer = new ComputeBuffer(rvfWindowMaxCount * landmarker.vertexCount * 4, sizeof(float));
+            rvfWindowWorldBuffer = new ComputeBuffer(rvfWindowMaxCount * landmarker.vertexCount * 4, sizeof(float));
+
+            lastValueScale = new ComputeBuffer(landmarker.vertexCount, sizeof(float) * 3);
+            lastValueScaleWorld = new ComputeBuffer(landmarker.vertexCount, sizeof(float) * 3);
+
             // Output length is pose landmark count(33) + human exist flag(1).
             outputBuffer = new ComputeBuffer(landmarker.vertexCount + 1, sizeof(float) * 4);
             worldLandmarkBuffer = new ComputeBuffer(landmarker.vertexCount + 1, sizeof(float) * 4);
+            poseLandmarks = new Vector4[landmarker.vertexCount + 1];
+            poseWorldLandmarks = new Vector4[landmarker.vertexCount + 1];
         }
 
         // Process pipeline is refered https://google.github.io/mediapipe/solutions/pose#ml-pipeline.
         // Check above URL or BlazePose paper(https://arxiv.org/abs/2006.10204) for details.
         public void ProcessImage(
             Texture inputTexture, 
-            BlazePoseModel blazePoseModel, 
+            BlazePoseModel blazePoseModel = BlazePoseModel.full, 
             float poseThreshold = 0.75f, 
             float iouThreshold = 0.3f)
         {
@@ -101,14 +106,15 @@ namespace Mediapipe.BlazePose{
             // Image scaling and padding
             // Output image is letter-box image.
             // For example, top and bottom pixels of `letterboxTexture` are black if `inputTexture` size is 1920(width)*1080(height)
+            cs.SetInt("_isLinerColorSpace", QualitySettings.activeColorSpace == ColorSpace.Linear ? 1 : 0);
             cs.SetInt("_letterboxWidth", DETECTION_INPUT_IMAGE_SIZE);
             cs.SetVector("_spadScale", scale);
             cs.SetTexture(0, "_letterboxInput", inputTexture);
-            cs.SetTexture(0, "_letterboxTexture", letterboxTexture);
+            cs.SetBuffer(0, "_letterboxTextureBuffer", letterboxTextureBuffer);
             cs.Dispatch(0, DETECTION_INPUT_IMAGE_SIZE / 8, DETECTION_INPUT_IMAGE_SIZE / 8, 1);
 
             // Predict Pose detection.
-            detecter.ProcessImage(letterboxTexture, poseThreshold, iouThreshold);
+            detecter.ProcessImage(letterboxTextureBuffer, poseThreshold, iouThreshold);
 
             // Update Pose Region from detected results.
             cs.SetFloat("_deltaTime", Time.deltaTime);
@@ -121,36 +127,69 @@ namespace Mediapipe.BlazePose{
             // Scale and pad to letter-box image and crop pose region from letter-box image.
             cs.SetTexture(2, "_inputTexture", inputTexture);
             cs.SetBuffer(2, "_cropRegion", poseRegionBuffer);
-            cs.SetTexture(2, "_cropedTexture", cropedTexture);
+            cs.SetBuffer(2, "_cropedTextureBuffer", cropedTextureBuffer);
             cs.Dispatch(2, LANDMARK_INPUT_IMAGE_SIZE / 8, LANDMARK_INPUT_IMAGE_SIZE / 8, 1);
 
             // Predict pose landmark.
-            landmarker.ProcessImage(cropedTexture, (PoseLandmarkModel)blazePoseModel);
+            landmarker.ProcessImage(cropedTextureBuffer, (PoseLandmarkModel)blazePoseModel);
+
+            float fps = 1.0f / Time.unscaledDeltaTime;
+            float velocity_scale = 1.0f / fps;
 
             // Map to cordinates of `inputTexture` from pose landmarks on croped letter-box image.
+            cs.SetInt("_isWorldProcess", 0);
             cs.SetInt("_keypointCount", landmarker.vertexCount);
             cs.SetFloat("_postDeltatime", Time.deltaTime);
+            cs.SetFloat("_velocity_scale", velocity_scale);
+            cs.SetInt("_rvfWindowCount", rvfWindowCount);
             cs.SetBuffer(3, "_postInput", landmarker.outputBuffer);
-            cs.SetBuffer(3, "_postInputWorld", landmarker.worldLandmarkBuffer);
             cs.SetBuffer(3, "_postRegion", poseRegionBuffer);
-            cs.SetBuffer(3, "_postDeltaOutput", deltaOutputBuffer);
+            cs.SetBuffer(3, "_postRvfWindowBuffer", rvfWindowBuffer);
+            cs.SetBuffer(3, "_postLastValueScale", lastValueScale);
             cs.SetBuffer(3, "_postOutput", outputBuffer);
-            cs.SetBuffer(3, "_postDeltaOutputWorld", deltaOutputWorldBuffer);
-            cs.SetBuffer(3, "_postOutputWorld", worldLandmarkBuffer);
             cs.Dispatch(3, 1, 1, 1);
+
+            // Map to cordinates of `inputTexture` from pose landmarks on croped letter-box image for 3D world landmarks.
+            cs.SetInt("_isWorldProcess", 1);
+            cs.SetInt("_keypointCount", landmarker.vertexCount);
+            cs.SetFloat("_postDeltatime", Time.deltaTime);
+            cs.SetFloat("_velocity_scale", velocity_scale);
+            cs.SetInt("_rvfWindowCount", rvfWindowCount);
+            cs.SetBuffer(3, "_postInput", landmarker.worldLandmarkBuffer);
+            cs.SetBuffer(3, "_postRegion", poseRegionBuffer);
+            cs.SetBuffer(3, "_postRvfWindowBuffer", rvfWindowWorldBuffer);
+            cs.SetBuffer(3, "_postLastValueScale", lastValueScaleWorld);
+            cs.SetBuffer(3, "_postOutput", worldLandmarkBuffer);
+            cs.Dispatch(3, 1, 1, 1);
+
+            rvfWindowCount = Mathf.Min(rvfWindowCount + 1, rvfWindowMaxCount);
+
+            // Cache landmarks to array for accessing data with CPU (C#).  
+            AsyncGPUReadback.Request(outputBuffer, request => {
+                request.GetData<Vector4>().CopyTo(poseLandmarks);
+            });
+            AsyncGPUReadback.Request(worldLandmarkBuffer, request => {
+                request.GetData<Vector4>().CopyTo(poseWorldLandmarks);
+            });
         }
 
         public void Dispose(){
             detecter.Dispose();
             landmarker.Dispose();
-            letterboxTexture.Release();
-            cropedTexture.Release();
+            letterboxTextureBuffer.Dispose();
             poseRegionBuffer.Dispose();
-            deltaOutputBuffer.Dispose();
+            cropedTextureBuffer.Dispose();
+            rvfWindowBuffer.Dispose();
+            rvfWindowWorldBuffer.Dispose();
+            lastValueScale.Dispose();
+            lastValueScaleWorld.Dispose();
             outputBuffer.Dispose();
-            deltaOutputWorldBuffer.Dispose();
             worldLandmarkBuffer.Dispose();
         }
+
+        // Provide cached landmarks.
+        public Vector4 GetPoseLandmark(int index) => poseLandmarks[index];
+        public Vector4 GetPoseWorldLandmark(int index) => poseWorldLandmarks[index];
         #endregion
     }
 }
