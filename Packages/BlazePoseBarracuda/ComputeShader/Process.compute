@@ -152,8 +152,6 @@ void CropImage(uint2 id : SV_DispatchThreadID)
 
 uint _isWorldProcess;
 uint _keypointCount;
-float _postDeltatime;
-float _velocity_scale;
 uint _rvfWindowCount;
 
 StructuredBuffer<float4> _postInput;
@@ -167,6 +165,9 @@ RWStructuredBuffer<float4> _postOutput;
 [numthreads(33 + 1, 1, 1)]
 void PostProcess(uint id : SV_DispatchThreadID)
 {
+    const float VELOCITY_SCALE = 0.1f;
+    const float FIXED_DELTATIME = 1.0f / 30.0f;
+
     if(id > _keypointCount) return;
 
     if(id == _keypointCount){
@@ -215,8 +216,8 @@ void PostProcess(uint id : SV_DispatchThreadID)
         if(window_size > 0){
             float3 distance = x * value_scale - p_x * p_value_scale;
             float3 distance_sum = distance;
-            float duration_sum = _postDeltatime;
-            float duration_max = (1 + window_size) * _postDeltatime;
+            float duration_sum = FIXED_DELTATIME;
+            float duration_max = (1 + window_size) * FIXED_DELTATIME;
             
             for(int i = 0; i < window_size; i++){
                 uint offs = (i * _keypointCount + id) * 4;
@@ -228,7 +229,7 @@ void PostProcess(uint id : SV_DispatchThreadID)
             }
 
             float3 velocity = distance_sum / duration_sum;
-            float3 alpha = 1.0 - 1.0 / (1.0 + _velocity_scale * abs(velocity));
+            float3 alpha = 1.0 - 1.0 / (1.0 + VELOCITY_SCALE * abs(velocity));
             x = lerp(p_x, x, alpha);
 
             // window enqueue & dequeue for next frame
@@ -245,14 +246,14 @@ void PostProcess(uint id : SV_DispatchThreadID)
                 _postRvfWindowBuffer[offs + 0] = distance.x;
                 _postRvfWindowBuffer[offs + 1] = distance.y;
                 _postRvfWindowBuffer[offs + 2] = distance.z;
-                _postRvfWindowBuffer[offs + 3] = _postDeltatime;
+                _postRvfWindowBuffer[offs + 3] = FIXED_DELTATIME;
             }
             else{
                 uint offs = (window_size * _keypointCount + id) * 4;
                 _postRvfWindowBuffer[offs + 0] = distance.x;
                 _postRvfWindowBuffer[offs + 1] = distance.y;
                 _postRvfWindowBuffer[offs + 2] = distance.z;
-                _postRvfWindowBuffer[offs + 3] = _postDeltatime;
+                _postRvfWindowBuffer[offs + 3] = FIXED_DELTATIME;
             }
         }
 

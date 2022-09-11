@@ -133,14 +133,9 @@ namespace Mediapipe.BlazePose{
             // Predict pose landmark.
             landmarker.ProcessImage(cropedTextureBuffer, (PoseLandmarkModel)blazePoseModel);
 
-            float fps = 1.0f / Time.unscaledDeltaTime;
-            float velocity_scale = 1.0f / fps;
-
             // Map to cordinates of `inputTexture` from pose landmarks on croped letter-box image.
             cs.SetInt("_isWorldProcess", 0);
             cs.SetInt("_keypointCount", landmarker.vertexCount);
-            cs.SetFloat("_postDeltatime", Time.deltaTime);
-            cs.SetFloat("_velocity_scale", velocity_scale);
             cs.SetInt("_rvfWindowCount", rvfWindowCount);
             cs.SetBuffer(3, "_postInput", landmarker.outputBuffer);
             cs.SetBuffer(3, "_postRegion", poseRegionBuffer);
@@ -152,8 +147,6 @@ namespace Mediapipe.BlazePose{
             // Map to cordinates of `inputTexture` from pose landmarks on croped letter-box image for 3D world landmarks.
             cs.SetInt("_isWorldProcess", 1);
             cs.SetInt("_keypointCount", landmarker.vertexCount);
-            cs.SetFloat("_postDeltatime", Time.deltaTime);
-            cs.SetFloat("_velocity_scale", velocity_scale);
             cs.SetInt("_rvfWindowCount", rvfWindowCount);
             cs.SetBuffer(3, "_postInput", landmarker.worldLandmarkBuffer);
             cs.SetBuffer(3, "_postRegion", poseRegionBuffer);
