@@ -102,6 +102,7 @@ namespace Mediapipe.BlazePose{
                 Mathf.Max((float)inputTexture.height / inputTexture.width, 1),
                 Mathf.Max(1, (float)inputTexture.width / inputTexture.height)
             );
+            cs.SetFloat("_deltaTime", 1.0f / 150.0f);
 
             // Image scaling and padding
             // Output image is letter-box image.
@@ -117,7 +118,6 @@ namespace Mediapipe.BlazePose{
             detecter.ProcessImage(letterboxTextureBuffer, poseThreshold, iouThreshold);
 
             // Update Pose Region from detected results.
-            cs.SetFloat("_deltaTime", Time.deltaTime);
             cs.SetInt("_upperBodyOnly", 0);
             cs.SetBuffer(1, "_poseDetections", detecter.outputBuffer);
             cs.SetBuffer(1, "_poseDetectionCount", detecter.countBuffer);

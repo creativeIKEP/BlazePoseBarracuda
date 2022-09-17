@@ -166,7 +166,6 @@ RWStructuredBuffer<float4> _postOutput;
 void PostProcess(uint id : SV_DispatchThreadID)
 {
     const float VELOCITY_SCALE = 0.1f;
-    const float FIXED_DELTATIME = 1.0f / 30.0f;
 
     if(id > _keypointCount) return;
 
@@ -216,8 +215,8 @@ void PostProcess(uint id : SV_DispatchThreadID)
         if(window_size > 0){
             float3 distance = x * value_scale - p_x * p_value_scale;
             float3 distance_sum = distance;
-            float duration_sum = FIXED_DELTATIME;
-            float duration_max = (1 + window_size) * FIXED_DELTATIME;
+            float duration_sum = _deltaTime;
+            float duration_max = (1 + window_size) * _deltaTime;
             
             for(int i = 0; i < window_size; i++){
                 uint offs = (i * _keypointCount + id) * 4;
@@ -246,14 +245,14 @@ void PostProcess(uint id : SV_DispatchThreadID)
                 _postRvfWindowBuffer[offs + 0] = distance.x;
                 _postRvfWindowBuffer[offs + 1] = distance.y;
                 _postRvfWindowBuffer[offs + 2] = distance.z;
-                _postRvfWindowBuffer[offs + 3] = FIXED_DELTATIME;
+                _postRvfWindowBuffer[offs + 3] = _deltaTime;
             }
             else{
                 uint offs = (window_size * _keypointCount + id) * 4;
                 _postRvfWindowBuffer[offs + 0] = distance.x;
                 _postRvfWindowBuffer[offs + 1] = distance.y;
                 _postRvfWindowBuffer[offs + 2] = distance.z;
-                _postRvfWindowBuffer[offs + 3] = FIXED_DELTATIME;
+                _postRvfWindowBuffer[offs + 3] = _deltaTime;
             }
         }
 
