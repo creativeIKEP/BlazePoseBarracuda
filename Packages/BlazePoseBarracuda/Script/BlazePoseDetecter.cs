@@ -102,7 +102,7 @@ namespace Mediapipe.BlazePose{
                 Mathf.Max((float)inputTexture.height / inputTexture.width, 1),
                 Mathf.Max(1, (float)inputTexture.width / inputTexture.height)
             );
-            cs.SetFloat("_deltaTime", 1.0f / 150.0f);
+            cs.SetFloat("_deltaTime", 1.0f / (4500.0f * Time.unscaledDeltaTime));
 
             // Image scaling and padding
             // Output image is letter-box image.
