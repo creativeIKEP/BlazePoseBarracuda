@@ -152,6 +152,7 @@ void CropImage(uint2 id : SV_DispatchThreadID)
 
 uint _isWorldProcess;
 uint _keypointCount;
+float _postDeltatime;
 uint _rvfWindowCount;
 
 StructuredBuffer<float4> _postInput;
@@ -215,8 +216,8 @@ void PostProcess(uint id : SV_DispatchThreadID)
         if(window_size > 0){
             float3 distance = x * value_scale - p_x * p_value_scale;
             float3 distance_sum = distance;
-            float duration_sum = _deltaTime;
-            float duration_max = (1 + window_size) * _deltaTime;
+            float duration_sum = _postDeltatime;
+            float duration_max = (1 + window_size) * _postDeltatime;
             
             for(int i = 0; i < window_size; i++){
                 uint offs = (i * _keypointCount + id) * 4;
@@ -245,14 +246,14 @@ void PostProcess(uint id : SV_DispatchThreadID)
                 _postRvfWindowBuffer[offs + 0] = distance.x;
                 _postRvfWindowBuffer[offs + 1] = distance.y;
                 _postRvfWindowBuffer[offs + 2] = distance.z;
-                _postRvfWindowBuffer[offs + 3] = _deltaTime;
+                _postRvfWindowBuffer[offs + 3] = _postDeltatime;
             }
             else{
                 uint offs = (window_size * _keypointCount + id) * 4;
                 _postRvfWindowBuffer[offs + 0] = distance.x;
                 _postRvfWindowBuffer[offs + 1] = distance.y;
                 _postRvfWindowBuffer[offs + 2] = distance.z;
-                _postRvfWindowBuffer[offs + 3] = _deltaTime;
+                _postRvfWindowBuffer[offs + 3] = _postDeltatime;
             }
         }
 

@@ -102,7 +102,7 @@ namespace Mediapipe.BlazePose{
                 Mathf.Max((float)inputTexture.height / inputTexture.width, 1),
                 Mathf.Max(1, (float)inputTexture.width / inputTexture.height)
             );
-            cs.SetFloat("_deltaTime", 1.0f / (4500.0f * Time.unscaledDeltaTime));
+            float deltaTime = 1.0f / (4500.0f * Time.unscaledDeltaTime);
 
             // Image scaling and padding
             // Output image is letter-box image.
@@ -118,6 +118,7 @@ namespace Mediapipe.BlazePose{
             detecter.ProcessImage(letterboxTextureBuffer, poseThreshold, iouThreshold);
 
             // Update Pose Region from detected results.
+            cs.SetFloat("_deltaTime", deltaTime);
             cs.SetInt("_upperBodyOnly", 0);
             cs.SetBuffer(1, "_poseDetections", detecter.outputBuffer);
             cs.SetBuffer(1, "_poseDetectionCount", detecter.countBuffer);
@@ -136,6 +137,7 @@ namespace Mediapipe.BlazePose{
             // Map to cordinates of `inputTexture` from pose landmarks on croped letter-box image.
             cs.SetInt("_isWorldProcess", 0);
             cs.SetInt("_keypointCount", landmarker.vertexCount);
+            cs.SetFloat("_postDeltatime", deltaTime);
             cs.SetInt("_rvfWindowCount", rvfWindowCount);
             cs.SetBuffer(3, "_postInput", landmarker.outputBuffer);
             cs.SetBuffer(3, "_postRegion", poseRegionBuffer);
@@ -147,6 +149,7 @@ namespace Mediapipe.BlazePose{
             // Map to cordinates of `inputTexture` from pose landmarks on croped letter-box image for 3D world landmarks.
             cs.SetInt("_isWorldProcess", 1);
             cs.SetInt("_keypointCount", landmarker.vertexCount);
+            cs.SetFloat("_postDeltatime", deltaTime);
             cs.SetInt("_rvfWindowCount", rvfWindowCount);
             cs.SetBuffer(3, "_postInput", landmarker.worldLandmarkBuffer);
             cs.SetBuffer(3, "_postRegion", poseRegionBuffer);
