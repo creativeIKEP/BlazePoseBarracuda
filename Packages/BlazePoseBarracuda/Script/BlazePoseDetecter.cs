@@ -119,7 +119,6 @@ namespace Mediapipe.BlazePose{
 
             // Update Pose Region from detected results.
             cs.SetFloat("_deltaTime", deltaTime);
-            cs.SetInt("_upperBodyOnly", 0);
             cs.SetBuffer(1, "_poseDetections", detecter.outputBuffer);
             cs.SetBuffer(1, "_poseDetectionCount", detecter.countBuffer);
             cs.SetBuffer(1, "_poseRegions", poseRegionBuffer);

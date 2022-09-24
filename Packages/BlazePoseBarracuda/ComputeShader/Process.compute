@@ -53,7 +53,6 @@ void LetterBoxImage(uint2 id : SV_DispatchThreadID)
 
 // Kernel 1
 float _deltaTime;
-uint _upperBodyOnly;
 StructuredBuffer<PoseDetection> _poseDetections;
 ByteAddressBuffer _poseDetectionCount;
 RWStructuredBuffer<PoseRegion> _poseRegions;
@@ -72,8 +71,8 @@ void PoseRegionUpdate(uint id : SV_DispatchThreadID)
     float2 shoulder = pd.keyPoints[2];
 
     // Rotation center point
-    float2 center = _upperBodyOnly ? shoulder : hip;
-    float2 roi = _upperBodyOnly ? pd.keyPoints[3] : pd.keyPoints[1];
+    float2 center = hip;
+    float2 roi = pd.keyPoints[1];
 
     // Image crop size
     float sizeX = abs(roi.x - center.x);
