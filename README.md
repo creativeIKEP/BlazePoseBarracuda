@@ -29,7 +29,7 @@ To the `scopedRegistries` section:
 ```
 To the `dependencies` section:
 ```
-"jp.ikep.mediapipe.blazepose": "1.2.0"
+"jp.ikep.mediapipe.blazepose": "1.3.0"
 ```
 Finally, the manifest file looks like below:
 ```
@@ -42,7 +42,7 @@ Finally, the manifest file looks like below:
         }
     ],
     "dependencies": {
-        "jp.ikep.mediapipe.blazepose": "1.2.0",
+        "jp.ikep.mediapipe.blazepose": "1.3.0",
         ...
     }
 }
@@ -57,7 +57,7 @@ https://github.com/creativeIKEP/PoseDetectionBarracuda.git?path=Packages/PoseDet
 https://github.com/creativeIKEP/PoseLandmarkBarracuda.git?path=Packages/PoseLandmarkBarracuda#v1.1.1
 ```
 ```
-https://github.com/creativeIKEP/BlazePoseBarracuda.git?path=Packages/BlazePoseBarracuda#v1.2.0
+https://github.com/creativeIKEP/BlazePoseBarracuda.git?path=Packages/BlazePoseBarracuda#v1.3.0
 ```
 or, appending lines to your manifest file(`Packages/manifest.json`) `dependencies` block.
 Example is below.
@@ -66,7 +66,7 @@ Example is below.
   "dependencies": {
     "jp.ikep.mediapipe.posedetection": "https://github.com/creativeIKEP/PoseDetectionBarracuda.git?path=Packages/PoseDetectionBarracuda#v1.0.1",
     "jp.ikep.mediapipe.poselandmark": "https://github.com/creativeIKEP/PoseLandmarkBarracuda.git?path=Packages/PoseLandmarkBarracuda#v1.1.1",
-    "jp.ikep.mediapipe.blazepose": "https://github.com/creativeIKEP/BlazePoseBarracuda.git?path=Packages/BlazePoseBarracuda#v1.2.0",
+    "jp.ikep.mediapipe.blazepose": "https://github.com/creativeIKEP/BlazePoseBarracuda.git?path=Packages/BlazePoseBarracuda#v1.3.0",
     ...
   }
 }

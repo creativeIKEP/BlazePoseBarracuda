@@ -53,7 +53,6 @@ void LetterBoxImage(uint2 id : SV_DispatchThreadID)
 
 // Kernel 1
 float _deltaTime;
-uint _upperBodyOnly;
 StructuredBuffer<PoseDetection> _poseDetections;
 ByteAddressBuffer _poseDetectionCount;
 RWStructuredBuffer<PoseRegion> _poseRegions;
@@ -72,8 +71,8 @@ void PoseRegionUpdate(uint id : SV_DispatchThreadID)
     float2 shoulder = pd.keyPoints[2];
 
     // Rotation center point
-    float2 center = _upperBodyOnly ? shoulder : hip;
-    float2 roi = _upperBodyOnly ? pd.keyPoints[3] : pd.keyPoints[1];
+    float2 center = hip;
+    float2 roi = pd.keyPoints[1];
 
     // Image crop size
     float sizeX = abs(roi.x - center.x);
@@ -153,7 +152,6 @@ void CropImage(uint2 id : SV_DispatchThreadID)
 uint _isWorldProcess;
 uint _keypointCount;
 float _postDeltatime;
-float _velocity_scale;
 uint _rvfWindowCount;
 
 StructuredBuffer<float4> _postInput;
@@ -167,6 +165,8 @@ RWStructuredBuffer<float4> _postOutput;
 [numthreads(33 + 1, 1, 1)]
 void PostProcess(uint id : SV_DispatchThreadID)
 {
+    const float VELOCITY_SCALE = 0.1f;
+
     if(id > _keypointCount) return;
 
     if(id == _keypointCount){
@@ -228,7 +228,7 @@ void PostProcess(uint id : SV_DispatchThreadID)
             }
 
             float3 velocity = distance_sum / duration_sum;
-            float3 alpha = 1.0 - 1.0 / (1.0 + _velocity_scale * abs(velocity));
+            float3 alpha = 1.0 - 1.0 / (1.0 + VELOCITY_SCALE * abs(velocity));
             x = lerp(p_x, x, alpha);
 
             // window enqueue & dequeue for next frame
