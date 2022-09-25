@@ -1,3 +1,6 @@
+### [1.3.0] - 2022-09-25
+Improved performance difference by FPS.
+
 ### [1.2.0] - 2021-02-15
 - Improve the stability of pose estimation.
 - Fixed an issue that pose estimation was not performed correctly when the color space was Liner.
